@@ -1,10 +1,12 @@
 # Repository Guidelines
 
+PrivSignal is an Elixir CLI tool that operationalizes PIA reassessment triggers in GitHub CI/CD workflows for Elixir-based systems.
+
 ## Project Structure & Module Organization
 
 - `lib/` holds application code. The main entrypoint is `lib/priv_signal.ex`, with supporting modules under `lib/priv_signal/` (config, runtime, telemetry, etc.).
 - `test/` contains ExUnit tests. Most are grouped under `test/priv_signal/` with a few top-level tests like `test/priv_signal_test.exs`.
-- `docs/` contains product and architecture notes (`prd.md`, `plan.md`, `fdd.md`).
+- `docs/` contains product and architecture notes (`prd.md`, `plan.md`, `fdd.md`). See `docs/prd.md` and `docs/fdd.md` for the core product and functional design references.
 - `priv-signal.yml` (repo root, created via `mix priv_signal.init`) is the configuration source of truth.
 
 ## Build, Test, and Development Commands
