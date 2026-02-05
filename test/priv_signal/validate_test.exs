@@ -3,7 +3,6 @@ defmodule PrivSignal.ValidateTest do
 
   alias PrivSignal.Config.{Flow, PathStep}
   alias PrivSignal.Validate
-  alias PrivSignal.Validate.Error
   alias PrivSignal.Validate.Index
 
   setup_all do
@@ -46,9 +45,9 @@ defmodule PrivSignal.ValidateTest do
     assert Enum.any?(result.errors, &(&1.type == :missing_function))
   end
 
-  test "missing edge produces :missing_edge error", %{index: index} do
+  test "disconnected path still passes when modules/functions exist", %{index: index} do
     flow = %Flow{
-      id: "missing_edge",
+      id: "disconnected_path",
       path: [
         %PathStep{module: "Fixtures.Flow.Start", function: "run"},
         %PathStep{module: "Fixtures.Flow.End", function: "finish"}
@@ -57,21 +56,8 @@ defmodule PrivSignal.ValidateTest do
 
     result = Validate.validate_flow(flow, index)
 
-    assert Enum.any?(result.errors, &(&1.type == :missing_edge))
-  end
-
-  test "ambiguous import produces :ambiguous_call error", %{index: index} do
-    flow = %Flow{
-      id: "ambiguous_call",
-      path: [
-        %PathStep{module: "Fixtures.Import.AmbiguousCaller", function: "run"},
-        %PathStep{module: "Fixtures.Import.AmbiguousA", function: "shared"}
-      ]
-    }
-
-    result = Validate.validate_flow(flow, index)
-
-    assert [%Error{type: :ambiguous_call} | _] = result.errors
+    assert result.status == :ok
+    assert result.errors == []
   end
 
   defp fixture_root do

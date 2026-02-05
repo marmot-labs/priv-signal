@@ -37,7 +37,7 @@ defmodule Mix.Tasks.PrivSignal.ScoreTest do
       errors = collect_errors([])
       # Ensure validation halts before diff/LLM steps attempt to run.
       refute Enum.any?(errors, &String.contains?(&1, "git diff failed"))
-      assert Enum.any?(errors, &String.contains?(&1, "missing call edge"))
+      assert Enum.any?(errors, &String.contains?(&1, "missing function"))
     end)
   end
 
@@ -82,7 +82,7 @@ defmodule Mix.Tasks.PrivSignal.ScoreTest do
           - module: PrivSignal.Config.Loader
             function: load
           - module: PrivSignal.Config
-            function: from_map
+            function: missing_function
         exits_system: false
     """
   end

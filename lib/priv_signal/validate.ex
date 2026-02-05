@@ -7,7 +7,7 @@ defmodule PrivSignal.Validate do
 
   @doc """
   Validates all configured flows against a single source index so scoring can fail fast
-  when declared call chains drift from code.
+  when declared modules/functions drift from code.
   """
   def run(config, opts \\ []) do
     index_opts = Keyword.get(opts, :index, [])
@@ -40,12 +40,10 @@ defmodule PrivSignal.Validate do
 
     {module_errors, missing_modules} = validate_modules(steps, index, flow_id)
 
-    {function_errors, missing_functions} =
+    {function_errors, _missing_functions} =
       validate_functions(steps, index, flow_id, missing_modules)
 
-    edge_errors = validate_edges(steps, index, flow_id, missing_modules, missing_functions)
-
-    errors = module_errors ++ function_errors ++ edge_errors
+    errors = module_errors ++ function_errors
     status = if errors == [], do: :ok, else: :error
 
     %Result{flow_id: flow_id, status: status, errors: errors}
@@ -83,88 +81,6 @@ defmodule PrivSignal.Validate do
     {Enum.reverse(errors), missing_functions}
   end
 
-  defp validate_edges(steps, index, flow_id, missing_modules, missing_functions) do
-    steps
-    |> Enum.chunk_every(2, 1, :discard)
-    |> Enum.reduce([], fn [from, to], errors ->
-      if valid_step?(from, missing_modules, missing_functions) and
-           valid_step?(to, missing_modules, missing_functions) do
-        case edge_status(from, to, index) do
-          :ok ->
-            errors
-
-          {:ambiguous, arity, entry} ->
-            candidates = MapSet.to_list(entry.candidates) |> Enum.sort()
-
-            error =
-              Error.ambiguous_call(
-                flow_id,
-                from.module,
-                from.function,
-                entry.function,
-                arity,
-                candidates
-              )
-
-            [error | errors]
-
-          :missing ->
-            error =
-              Error.missing_edge(flow_id, from.module, from.function, to.module, to.function)
-
-            [error | errors]
-        end
-      else
-        errors
-      end
-    end)
-    |> Enum.reverse()
-  end
-
-  defp edge_status(from, to, index) do
-    caller_arities = function_arities(index.functions, from.module, from.function)
-
-    if edge_exists?(index.calls, caller_arities, from, to) do
-      :ok
-    else
-      case ambiguous_entry(index.ambiguous_calls, caller_arities, from, to) do
-        nil -> :missing
-        {arity, entry} -> {:ambiguous, arity, entry}
-      end
-    end
-  end
-
-  defp edge_exists?(calls, caller_arities, from, to) do
-    Enum.any?(caller_arities, fn arity ->
-      case Map.get(calls, {from.module, from.function, arity}) do
-        nil ->
-          false
-
-        callees ->
-          Enum.any?(callees, fn {module_name, fun_name, _} ->
-            module_name == to.module and fun_name == to.function
-          end)
-      end
-    end)
-  end
-
-  defp ambiguous_entry(ambiguous_calls, caller_arities, from, to) do
-    Enum.find_value(caller_arities, fn arity ->
-      case Map.get(ambiguous_calls, {from.module, from.function, arity}) do
-        nil ->
-          nil
-
-        entries ->
-          match =
-            Enum.find(entries, fn entry ->
-              entry.function == to.function and MapSet.member?(entry.candidates, to.module)
-            end)
-
-          if match, do: {arity, match}, else: nil
-      end
-    end)
-  end
-
   defp module_exists?(index, module) when is_binary(module) do
     MapSet.member?(index.modules, module)
   end
@@ -185,11 +101,6 @@ defmodule PrivSignal.Validate do
       if name == function, do: [arity | acc], else: acc
     end)
     |> Enum.sort()
-  end
-
-  defp valid_step?(step, missing_modules, missing_functions) do
-    not MapSet.member?(missing_modules, step.module) and
-      not MapSet.member?(missing_functions, {step.module, step.function})
   end
 
   defp normalize_step(%PathStep{module: module, function: function}) do
@@ -221,10 +132,6 @@ defmodule PrivSignal.Validate do
       Logger.error(
         "[priv_signal] validate run failed flow_count=#{flow_count} error_count=#{stats.error_count}"
       )
-    end
-
-    if stats.ambiguous_count > 0 do
-      Logger.warning("[priv_signal] validate run ambiguous_calls=#{stats.ambiguous_count}")
     end
   end
 
@@ -265,16 +172,10 @@ defmodule PrivSignal.Validate do
     # Summarize errors to avoid leaking detailed flow config in telemetry.
     errors = Enum.flat_map(results, & &1.errors)
 
-    type_counts =
-      Enum.frequencies_by(errors, fn
-        %{type: type} when not is_nil(type) -> type
-        _ -> :unknown
-      end)
-
     %{
       status: status(results),
       error_count: length(errors),
-      ambiguous_count: Map.get(type_counts, :ambiguous_call, 0)
+      ambiguous_count: 0
     }
   end
 

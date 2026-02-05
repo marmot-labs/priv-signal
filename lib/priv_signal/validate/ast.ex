@@ -33,18 +33,6 @@ defmodule PrivSignal.Validate.AST do
     |> Enum.flat_map(&extract_function/1)
   end
 
-  def extract_calls(body_ast) do
-    {_ast, acc} =
-      Macro.traverse(
-        body_ast,
-        %{calls: [], capture_depth: 0},
-        &prewalk_call/2,
-        &postwalk_call/2
-      )
-
-    Enum.reverse(acc.calls)
-  end
-
   defp read_file(path) do
     case File.read(path) do
       {:ok, contents} -> {:ok, contents}
@@ -121,40 +109,6 @@ defmodule PrivSignal.Validate.AST do
 
   defp default_arg?({:\\, _meta, _args}), do: true
   defp default_arg?(_), do: false
-
-  defp prewalk_call({:&, _meta, _args} = node, acc) do
-    {node, %{acc | capture_depth: acc.capture_depth + 1}}
-  end
-
-  defp prewalk_call(node, acc) do
-    acc =
-      if acc.capture_depth == 0 do
-        maybe_add_call(node, acc)
-      else
-        acc
-      end
-
-    {node, acc}
-  end
-
-  defp postwalk_call({:&, _meta, _args} = node, acc) do
-    {node, %{acc | capture_depth: max(acc.capture_depth - 1, 0)}}
-  end
-
-  defp postwalk_call(node, acc), do: {node, acc}
-
-  defp maybe_add_call({{:., _meta, [module_ast, fun]}, _call_meta, args}, acc)
-       when is_atom(fun) and is_list(args) do
-    call = %{type: :remote, module: module_ast, name: fun, arity: length(args)}
-    %{acc | calls: [call | acc.calls]}
-  end
-
-  defp maybe_add_call({fun, _meta, args}, acc) when is_atom(fun) and is_list(args) do
-    call = %{type: :local, module: nil, name: fun, arity: length(args)}
-    %{acc | calls: [call | acc.calls]}
-  end
-
-  defp maybe_add_call(_node, acc), do: acc
 
   defp strip_elixir_prefix("Elixir." <> rest), do: rest
   defp strip_elixir_prefix(other), do: other

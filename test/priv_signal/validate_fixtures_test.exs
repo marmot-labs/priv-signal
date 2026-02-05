@@ -24,12 +24,12 @@ defmodule PrivSignal.Validate.FixturesTest do
     assert Validate.status(results) == :ok
   end
 
-  test "fixture flow fails when an edge is missing" do
-    # Skip the middle module to confirm missing edges are reported from the fixture index.
+  test "fixture flow passes when symbols exist even if edge is not explicit" do
+    # Skip the middle module; symbol-only validation ignores call-edge continuity.
     config = %Config{
       flows: [
         %Flow{
-          id: "fixture_flow_missing_edge",
+          id: "fixture_flow_symbol_only",
           path: [
             %PathStep{module: "Fixtures.Flow.Start", function: "run"},
             %PathStep{module: "Fixtures.Flow.End", function: "finish"}
@@ -39,10 +39,11 @@ defmodule PrivSignal.Validate.FixturesTest do
     }
 
     assert {:ok, results} = Validate.run(config, index: [root: fixture_root(), paths: ["lib"]])
-    assert Validate.status(results) == :error
+    assert Validate.status(results) == :ok
 
-    result = Enum.find(results, &(&1.flow_id == "fixture_flow_missing_edge"))
-    assert Enum.any?(result.errors, &(&1.type == :missing_edge))
+    result = Enum.find(results, &(&1.flow_id == "fixture_flow_symbol_only"))
+    assert result.status == :ok
+    assert result.errors == []
   end
 
   defp fixture_root do

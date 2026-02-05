@@ -1,21 +1,20 @@
 # PRD: Deterministic Data Flow Validation (AST-Level)
 
 ## Summary
-Add a new major feature to PrivSignal that validates data flow definitions in `priv-signal.yml` against the codebase. The feature reads each configured data flow and verifies that every module and function referenced exists and that the specified call chain is present (e.g., `A -> B -> C -> D` must show that `A` calls `B`, `B` calls `C`, and `C` calls `D`). This validation must be deterministic, correct, and fast. It must be invokable via a dedicated mix task and must run automatically as the first step of the existing `mix priv_signal.score` task.
+Add a new major feature to PrivSignal that validates data flow definitions in `priv-signal.yml` against the codebase. The feature reads each configured data flow and verifies that every referenced module and function still exists. This validation must be deterministic, correct, and fast. It must be invokable via a dedicated mix task and must run automatically as the first step of the existing `mix priv_signal.score` task.
 
 ## Problem Statement
-PrivSignal currently relies on declarative data flow definitions that can drift from the actual codebase. Over time, renamed modules, refactored functions, or altered call paths can make configured flows incorrect while still appearing valid in CI/CD scoring. This creates false confidence and reduces the reliability of PIA reassessment triggers.
+PrivSignal currently relies on declarative data flow definitions that can drift from the actual codebase. Over time, renamed modules or refactored functions can make configured flows incorrect while still appearing valid in CI/CD scoring. This creates false confidence and reduces the reliability of PIA reassessment triggers.
 
 ## Goals
 - Validate that each configured data flow in `priv-signal.yml` matches the codebase.
 - Confirm that every referenced module and function exists.
-- Confirm that each call in the declared call chain exists in the code (e.g., `A` calls `B`, `B` calls `C`, etc.).
 - Provide deterministic, correct, and fast validation suitable for CI runs and large repositories.
 - Support a collection of 12–20 data flows per run.
 - Provide a direct mix task for validation and run it automatically at the start of `mix priv_signal.score`.
 
 ## Non-Goals
-- No requirement on the specific implementation technique (e.g., AST parsing, compilation metadata, call graph extraction). The PRD explicitly forbids manual source code parsing and LLM-based analysis.
+- No requirement on the specific implementation technique (e.g., AST parsing, compilation metadata). The PRD explicitly forbids manual source code parsing and LLM-based analysis.
 - No requirement to infer or validate runtime behavior, dynamic dispatch, or metaprogramming beyond what is deterministically verifiable.
 - No requirement to validate data transformations or parameter-level semantics.
 
@@ -32,12 +31,7 @@ PrivSignal currently relies on declarative data flow definitions that can drift 
    - For each function in each flow, verify that the referenced module and function exists in the codebase.
    - Validation must report missing modules and missing functions distinctly.
 
-3. **Call Chain Validation**
-   - For each adjacent pair in a flow (`A -> B`), verify that `A` includes a call to `B` as specified.
-   - For a flow of `A -> B -> C -> D`, verify each step: `A` calls `B`, `B` calls `C`, `C` calls `D`.
-   - The reported result must include the exact failing edge(s) if the chain breaks.
-
-4. **Batch Validation**
+3. **Batch Validation**
    - Must process 12–20 flows in a single run without manual intervention.
    - Results must be aggregated and summarized per flow with pass/fail status.
 
@@ -61,7 +55,7 @@ PrivSignal currently relies on declarative data flow definitions that can drift 
 - **CLI Output** should include:
   - Overall validation status (pass/fail).
   - Per-flow status with clear error messages.
-  - If a flow fails, list missing modules/functions and/or missing call edges.
+  - If a flow fails, list missing modules/functions.
 - **Exit Codes**:
   - `0` on full success.
   - Non-zero on any validation failure.
@@ -74,7 +68,6 @@ PrivSignal currently relies on declarative data flow definitions that can drift 
 - Fail with explicit errors for:
   - Missing or malformed `priv-signal.yml`.
   - Referenced modules or functions not found.
-  - Broken call edges in a flow.
 - Errors must be actionable and reference the flow name and the offending element.
 
 ## Observability

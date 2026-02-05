@@ -34,7 +34,7 @@ defmodule Mix.Tasks.PrivSignal.ValidateTest do
       end
 
       errors = collect_errors([])
-      assert Enum.any?(errors, &String.contains?(&1, "missing call edge"))
+      assert Enum.any?(errors, &String.contains?(&1, "missing function"))
     end)
   end
 
@@ -79,7 +79,7 @@ defmodule Mix.Tasks.PrivSignal.ValidateTest do
           - module: PrivSignal.Config.Loader
             function: load
           - module: PrivSignal.Config
-            function: from_map
+            function: missing_function
         exits_system: false
     """
   end

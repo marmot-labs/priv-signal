@@ -48,38 +48,4 @@ defmodule PrivSignal.Validate.ASTTest do
     assert Enum.any?(functions, &(&1.name == :foo and &1.arity == 2))
     assert Enum.any?(functions, &(&1.name == :bar and &1.arity == 1))
   end
-
-  test "extract_calls captures remote and local calls" do
-    source = """
-    defmodule Foo do
-      def run(x) do
-        Bar.baz(x)
-        local(x)
-      end
-
-      def local(x), do: x
-    end
-    """
-
-    {:ok, ast} = Code.string_to_quoted(source)
-    [%{body: body}] = AST.extract_modules(ast)
-
-    functions =
-      body
-      |> AST.module_forms()
-      |> AST.extract_functions()
-
-    run = Enum.find(functions, &(&1.name == :run))
-    calls = AST.extract_calls(run.body)
-
-    assert Enum.any?(calls, fn call ->
-             call.type == :remote and match?({:__aliases__, _, [:Bar]}, call.module) and
-               call.name == :baz and
-               call.arity == 1
-           end)
-
-    assert Enum.any?(calls, fn call ->
-             call.type == :local and call.name == :local and call.arity == 1
-           end)
-  end
 end
