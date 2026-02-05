@@ -31,14 +31,21 @@ defmodule PrivSignal.Config.Schema do
 
   defp validate_pii_modules(map, errors) do
     case get(map, :pii_modules) do
-      nil -> ["pii_modules is required" | errors]
-      list -> if list_of_strings?(list), do: errors, else: ["pii_modules must be a list of strings" | errors]
+      nil ->
+        ["pii_modules is required" | errors]
+
+      list ->
+        if list_of_strings?(list),
+          do: errors,
+          else: ["pii_modules must be a list of strings" | errors]
     end
   end
 
   defp validate_flows(map, errors) do
     case get(map, :flows) do
-      nil -> ["flows is required" | errors]
+      nil ->
+        ["flows is required" | errors]
+
       list when is_list(list) ->
         Enum.reduce(Enum.with_index(list), errors, fn {flow, idx}, acc ->
           validate_flow(flow, idx, acc)
@@ -74,7 +81,10 @@ defmodule PrivSignal.Config.Schema do
 
     errors =
       case get(flow, :pii_categories) do
-        list -> if list_of_strings?(list), do: errors, else: ["flows[#{idx}].pii_categories must be a list of strings" | errors]
+        list ->
+          if list_of_strings?(list),
+            do: errors,
+            else: ["flows[#{idx}].pii_categories must be a list of strings" | errors]
       end
 
     case get(flow, :exits_system) do

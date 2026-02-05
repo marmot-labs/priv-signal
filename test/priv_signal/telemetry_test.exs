@@ -17,7 +17,9 @@ defmodule PrivSignal.TelemetryTest do
       self()
     )
 
-    tmp_dir = Path.join(System.tmp_dir!(), "priv_signal_telemetry_#{System.unique_integer([:positive])}")
+    tmp_dir =
+      Path.join(System.tmp_dir!(), "priv_signal_telemetry_#{System.unique_integer([:positive])}")
+
     File.mkdir_p!(tmp_dir)
 
     config_path = Path.join(tmp_dir, "priv-signal.yml")
@@ -34,16 +36,22 @@ defmodule PrivSignal.TelemetryTest do
          status: 200,
          body: %{
            "choices" => [
-             %{"message" => %{"content" => "{\"touched_flows\":[],\"new_pii\":[],\"new_sinks\":[],\"notes\":[]}"}}
+             %{
+               "message" => %{
+                 "content" =>
+                   "{\"touched_flows\":[],\"new_pii\":[],\"new_sinks\":[],\"notes\":[]}"
+               }
+             }
            ]
          }
        }}
     end
 
     assert {:ok, _} =
-             PrivSignal.LLM.Client.request([
-               %{role: "user", content: "hello"}
-             ],
+             PrivSignal.LLM.Client.request(
+               [
+                 %{role: "user", content: "hello"}
+               ],
                api_key: "key",
                base_url: "https://example.com",
                model: "gpt-5",
@@ -51,7 +59,12 @@ defmodule PrivSignal.TelemetryTest do
              )
 
     _result = PrivSignal.Risk.Assessor.assess([])
-    assert {:ok, _} = PrivSignal.Output.Writer.write("markdown", %{risk_category: :none}, json_path: Path.join(tmp_dir, "priv-signal.json"), quiet: true)
+
+    assert {:ok, _} =
+             PrivSignal.Output.Writer.write("markdown", %{risk_category: :none},
+               json_path: Path.join(tmp_dir, "priv-signal.json"),
+               quiet: true
+             )
 
     assert_received {:telemetry, [:priv_signal, :config, :load], _m1, _meta1}
     assert_received {:telemetry, [:priv_signal, :git, :diff], _m2, _meta2}
@@ -69,10 +82,10 @@ defmodule PrivSignal.TelemetryTest do
   defp sample_yaml do
     """
     version: 1
-    
+
     pii_modules:
       - MyApp.Accounts.User
-    
+
     flows:
       - id: xapi_export
         description: "User activity exported as xAPI statements"

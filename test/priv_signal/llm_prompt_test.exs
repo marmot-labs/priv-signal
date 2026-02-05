@@ -10,8 +10,8 @@ defmodule PrivSignal.LLM.PromptTest do
     messages = Prompt.build(diff, summary)
 
     assert [%{role: "system"}, %{role: "user", content: content}] = messages
-    assert String.contains?(content, "CONFIG SUMMARY")
-    assert String.contains?(content, "DIFF (unified)")
+    assert String.contains?(content, "priv-signal.yml config summary")
+    assert String.contains?(content, "git diff (unified)")
     assert String.contains?(content, diff)
   end
 end

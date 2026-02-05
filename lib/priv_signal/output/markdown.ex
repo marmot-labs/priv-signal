@@ -45,11 +45,13 @@ defmodule PrivSignal.Output.Markdown do
   defp format_event_type(:new_sink), do: "New sink"
   defp format_event_type(other), do: to_string(other)
 
-  defp event_label(%{type: :flow_touched, flow_id: flow_id}) when is_binary(flow_id) and flow_id != "" do
+  defp event_label(%{type: :flow_touched, flow_id: flow_id})
+       when is_binary(flow_id) and flow_id != "" do
     flow_id
   end
 
-  defp event_label(%{type: :new_pii, pii_category: pii_category}) when is_binary(pii_category) and pii_category != "" do
+  defp event_label(%{type: :new_pii, pii_category: pii_category})
+       when is_binary(pii_category) and pii_category != "" do
     pii_category
   end
 

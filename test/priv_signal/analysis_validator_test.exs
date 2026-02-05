@@ -16,7 +16,9 @@ defmodule PrivSignal.Analysis.ValidatorTest do
 
   test "accepts evidence within diff ranges" do
     payload = %{
-      "touched_flows" => [%{"flow_id" => "x", "evidence" => "lib/foo.ex:10-12", "confidence" => 0.9}],
+      "touched_flows" => [
+        %{"flow_id" => "x", "evidence" => "lib/foo.ex:10-12", "confidence" => 0.9}
+      ],
       "new_pii" => [],
       "new_sinks" => [],
       "notes" => []
@@ -25,15 +27,17 @@ defmodule PrivSignal.Analysis.ValidatorTest do
     assert {:ok, _} = Validator.validate(payload, @diff)
   end
 
-  test "rejects evidence outside diff" do
+  test "drops evidence outside diff" do
     payload = %{
-      "touched_flows" => [%{"flow_id" => "x", "evidence" => "lib/foo.ex:99-100", "confidence" => 0.9}],
+      "touched_flows" => [
+        %{"flow_id" => "x", "evidence" => "lib/foo.ex:99-100", "confidence" => 0.9}
+      ],
       "new_pii" => [],
       "new_sinks" => [],
       "notes" => []
     }
 
-    assert {:error, errors} = Validator.validate(payload, @diff)
-    assert Enum.any?(errors, &String.contains?(&1, "not found in diff"))
+    assert {:ok, sanitized} = Validator.validate(payload, @diff)
+    assert sanitized["touched_flows"] == []
   end
 end

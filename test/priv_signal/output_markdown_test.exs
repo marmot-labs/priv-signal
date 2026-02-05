@@ -8,7 +8,13 @@ defmodule PrivSignal.Output.MarkdownTest do
       category: :medium,
       reasons: ["Introduces new PII categories"],
       events: [
-        %{type: :new_pii, id: "email", evidence: "lib/foo.ex:10", confidence: 0.9}
+        %{
+          type: :new_pii,
+          pii_category: "email",
+          summary: "Added email field",
+          evidence: "lib/foo.ex:10",
+          confidence: 0.9
+        }
       ]
     }
 

@@ -116,7 +116,10 @@ defmodule PrivSignal.Analysis.Normalizer do
         range -> parse_line_range(range)
       end
 
-    start_line = start_line || parse_line(fetch_any(map, [:start, "start", :start_line, "start_line", :line, "line"]))
+    start_line =
+      start_line ||
+        parse_line(fetch_any(map, [:start, "start", :start_line, "start_line", :line, "line"]))
+
     end_line = end_line || parse_line(fetch_any(map, [:end, "end", :end_line, "end_line"]))
 
     cond do

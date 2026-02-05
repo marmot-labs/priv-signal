@@ -22,11 +22,11 @@ defmodule Mix.Tasks.PrivSignal.Init do
   defp sample_config do
     """
     version: 1
-    
+
     pii_modules:
       - MyApp.Accounts.User
       - MyApp.Accounts.Author
-    
+
     flows:
       - id: xapi_export
         description: "User activity exported as xAPI statements"

@@ -33,8 +33,11 @@ defmodule PrivSignal.LLM.Client do
   def config(opts \\ []) do
     %{
       api_key: Keyword.get(opts, :api_key) || System.get_env("PRIV_SIGNAL_MODEL_API_KEY"),
-      secondary_key: Keyword.get(opts, :secondary_key) || System.get_env("PRIV_SIGNAL_SECONDARY_API_KEY"),
-      base_url: Keyword.get(opts, :base_url) || System.get_env("PRIV_SIGNAL_MODEL_URL") || @default_base_url,
+      secondary_key:
+        Keyword.get(opts, :secondary_key) || System.get_env("PRIV_SIGNAL_SECONDARY_API_KEY"),
+      base_url:
+        Keyword.get(opts, :base_url) || System.get_env("PRIV_SIGNAL_MODEL_URL") ||
+          @default_base_url,
       model: Keyword.get(opts, :model) || System.get_env("PRIV_SIGNAL_MODEL") || @default_model,
       debug: Keyword.get(opts, :debug) || env_truthy?("PRIV_SIGNAL_DEBUG"),
       connect_timeout_ms:
@@ -88,7 +91,9 @@ defmodule PrivSignal.LLM.Client do
   end
 
   defp maybe_add_org_header(headers, nil), do: headers
-  defp maybe_add_org_header(headers, secondary_key), do: headers ++ [{"openai-organization", secondary_key}]
+
+  defp maybe_add_org_header(headers, secondary_key),
+    do: headers ++ [{"openai-organization", secondary_key}]
 
   defp normalize_body(%{status: status} = response, _config) when status in 200..299 do
     body = Map.get(response, :body)
@@ -105,11 +110,13 @@ defmodule PrivSignal.LLM.Client do
     {:error, "unexpected LLM response: #{inspect(other)}"}
   end
 
-  defp extract_content(%{"choices" => [%{"message" => %{"content" => content}} | _]}) when is_binary(content) do
+  defp extract_content(%{"choices" => [%{"message" => %{"content" => content}} | _]})
+       when is_binary(content) do
     {:ok, content}
   end
 
-  defp extract_content(%{choices: [%{message: %{content: content}} | _]}) when is_binary(content) do
+  defp extract_content(%{choices: [%{message: %{content: content}} | _]})
+       when is_binary(content) do
     {:ok, content}
   end
 
@@ -144,9 +151,12 @@ defmodule PrivSignal.LLM.Client do
 
   defp env_truthy?(key) do
     case System.get_env(key) do
-      nil -> false
+      nil ->
+        false
+
       value when is_binary(value) ->
         String.downcase(String.trim(value)) in ["1", "true", "yes", "y", "on"]
+
       _ ->
         false
     end
@@ -188,13 +198,17 @@ defmodule PrivSignal.LLM.Client do
   defp debug_error_body(%{debug: false}, _status, _body), do: :ok
 
   defp debug_error_body(_config, status, body) do
-    Logger.info("[priv_signal] LLM non-2xx response status=#{status} body=#{inspect(body, limit: 200, printable_limit: 200)}")
+    Logger.info(
+      "[priv_signal] LLM non-2xx response status=#{status} body=#{inspect(body, limit: 200, printable_limit: 200)}"
+    )
   end
 
   defp debug_unexpected_response(%{debug: false}, _other), do: :ok
 
   defp debug_unexpected_response(_config, other) do
-    Logger.info("[priv_signal] LLM unexpected response=#{inspect(other, limit: 200, printable_limit: 200)}")
+    Logger.info(
+      "[priv_signal] LLM unexpected response=#{inspect(other, limit: 200, printable_limit: 200)}"
+    )
   end
 
   defp redact_headers(headers) do

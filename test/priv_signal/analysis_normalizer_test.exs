@@ -17,6 +17,6 @@ defmodule PrivSignal.Analysis.NormalizerTest do
 
     normalized = Normalizer.normalize(payload, min_confidence: 0.5)
 
-    assert [%{id: "x", evidence: "lib/foo.ex:10"}] = normalized["touched_flows"]
+    assert [%{flow_id: "x", evidence: "lib/foo.ex:10"}] = normalized["touched_flows"]
   end
 end

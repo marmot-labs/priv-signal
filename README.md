@@ -7,6 +7,7 @@ using a project-defined map of privacy-relevant data flows.
 
 ```bash
 mix priv_signal.init
+mix priv_signal.validate
 mix priv_signal.score --base origin/main --head HEAD
 ```
 
@@ -38,6 +39,16 @@ flows:
     exits_system: true
     third_party: "AWS S3"
 ```
+
+## Validation
+
+Run deterministic flow validation against your codebase:
+
+```bash
+mix priv_signal.validate
+```
+
+This validation step also runs automatically at the start of `mix priv_signal.score` and will fail fast if any configured flow is invalid.
 
 ## Environment Variables
 
@@ -76,6 +87,8 @@ jobs:
 PrivSignal emits `:telemetry` events for key steps:
 
 - `[:priv_signal, :config, :load]`
+- `[:priv_signal, :validate, :index]`
+- `[:priv_signal, :validate, :run]`
 - `[:priv_signal, :git, :diff]`
 - `[:priv_signal, :llm, :request]`
 - `[:priv_signal, :risk, :assess]`

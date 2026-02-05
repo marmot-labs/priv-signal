@@ -8,6 +8,7 @@ defmodule PrivSignal.Git.OptionsTest do
   end
 
   test "accepts base and head overrides" do
-    assert %{base: "main", head: "feature"} = Options.parse(["--base", "main", "--head", "feature"])
+    assert %{base: "main", head: "feature"} =
+             Options.parse(["--base", "main", "--head", "feature"])
   end
 end

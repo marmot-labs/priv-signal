@@ -105,7 +105,9 @@ defmodule PrivSignal.Analysis.Validator do
     file_ranges = Map.get(ranges, file) || Map.get(ranges, "#{file}")
 
     case file_ranges do
-      nil -> false
+      nil ->
+        false
+
       ranges_list ->
         Enum.any?(ranges_list, fn {start, end_line_in_diff} ->
           start_line <= end_line_in_diff and end_line >= start
@@ -173,7 +175,10 @@ defmodule PrivSignal.Analysis.Validator do
         range -> parse_line_range(range)
       end
 
-    start_line = start_line || parse_line(fetch_any(map, [:start, "start", :start_line, "start_line", :line, "line"]))
+    start_line =
+      start_line ||
+        parse_line(fetch_any(map, [:start, "start", :start_line, "start_line", :line, "line"]))
+
     end_line = end_line || parse_line(fetch_any(map, [:end, "end", :end_line, "end_line"]))
 
     cond do

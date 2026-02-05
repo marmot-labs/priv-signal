@@ -29,7 +29,12 @@ defmodule PrivSignal.LLM.ClientTest do
          status: 200,
          body: %{
            "choices" => [
-             %{"message" => %{"content" => "{\"touched_flows\":[],\"new_pii\":[],\"new_sinks\":[],\"notes\":[]}"}}
+             %{
+               "message" => %{
+                 "content" =>
+                   "{\"touched_flows\":[],\"new_pii\":[],\"new_sinks\":[],\"notes\":[]}"
+               }
+             }
            ]
          }
        }}

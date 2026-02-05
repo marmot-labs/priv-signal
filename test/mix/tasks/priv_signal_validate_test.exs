@@ -1,27 +1,26 @@
-defmodule Mix.Tasks.PrivSignal.ScoreTest do
+defmodule Mix.Tasks.PrivSignal.ValidateTest do
   use ExUnit.Case
 
-  test "validates priv-signal.yml and reports success" do
+  test "mix priv_signal.validate succeeds on valid flows" do
     tmp_dir =
-      Path.join(System.tmp_dir!(), "priv_signal_score_#{System.unique_integer([:positive])}")
+      Path.join(System.tmp_dir!(), "priv_signal_validate_#{System.unique_integer([:positive])}")
 
     File.mkdir_p!(tmp_dir)
 
     File.cd!(tmp_dir, fn ->
-      File.write!("priv-signal.yml", sample_yaml())
+      File.write!("priv-signal.yml", passing_yaml())
 
       Mix.shell(Mix.Shell.Process)
-      Mix.Tasks.PrivSignal.Score.run([])
+      Mix.Tasks.PrivSignal.Validate.run([])
 
       assert_received {:mix_shell, :info, ["priv-signal.yml is valid"]}
-      assert_received {:mix_shell, :error, [message]}
-      assert String.starts_with?(message, "git diff failed:")
+      assert_received {:mix_shell, :info, ["data flow validation: ok"]}
     end)
   end
 
-  test "fails fast when validation fails" do
+  test "mix priv_signal.validate fails on invalid flows" do
     tmp_dir =
-      Path.join(System.tmp_dir!(), "priv_signal_score_#{System.unique_integer([:positive])}")
+      Path.join(System.tmp_dir!(), "priv_signal_validate_#{System.unique_integer([:positive])}")
 
     File.mkdir_p!(tmp_dir)
 
@@ -31,17 +30,15 @@ defmodule Mix.Tasks.PrivSignal.ScoreTest do
       Mix.shell(Mix.Shell.Process)
 
       assert_raise Mix.Error, ~r/data flow validation failed/, fn ->
-        Mix.Tasks.PrivSignal.Score.run([])
+        Mix.Tasks.PrivSignal.Validate.run([])
       end
 
       errors = collect_errors([])
-      # Ensure validation halts before diff/LLM steps attempt to run.
-      refute Enum.any?(errors, &String.contains?(&1, "git diff failed"))
       assert Enum.any?(errors, &String.contains?(&1, "missing call edge"))
     end)
   end
 
-  defp sample_yaml do
+  defp passing_yaml do
     """
     version: 1
 
@@ -73,7 +70,7 @@ defmodule Mix.Tasks.PrivSignal.ScoreTest do
       - PrivSignal.Config
 
     flows:
-      - id: broken_chain
+      - id: config_load_chain
         description: "Broken chain"
         purpose: setup
         pii_categories:

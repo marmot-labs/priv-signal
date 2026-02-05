@@ -13,6 +13,7 @@ defmodule Mix.Tasks.PrivSignal.Score do
     options = PrivSignal.Git.Options.parse(args)
 
     with {:ok, config} <- load_config(),
+         :ok <- validate_flows(config),
          {:ok, diff} <- load_diff(options) do
       summary = PrivSignal.Config.Summary.build(config)
       messages = PrivSignal.LLM.Prompt.build(diff, summary)
@@ -78,6 +79,37 @@ defmodule Mix.Tasks.PrivSignal.Score do
         {:error, error}
     end
   end
+
+  defp validate_flows(config) do
+    case PrivSignal.Validate.run(config) do
+      {:ok, results} ->
+        render_validation(results)
+
+        case PrivSignal.Validate.status(results) do
+          :ok -> :ok
+          :error -> Mix.raise("data flow validation failed")
+        end
+
+      {:error, errors} ->
+        render_validation_errors(errors)
+        Mix.raise("data flow validation failed")
+    end
+  end
+
+  defp render_validation(results) do
+    results
+    |> PrivSignal.Validate.Output.format_results()
+    |> Enum.each(&emit_validation_line/1)
+  end
+
+  defp render_validation_errors(errors) do
+    errors
+    |> PrivSignal.Validate.Output.format_errors()
+    |> Enum.each(&emit_validation_line/1)
+  end
+
+  defp emit_validation_line(%{level: :info, message: message}), do: Mix.shell().info(message)
+  defp emit_validation_line(%{level: :error, message: message}), do: Mix.shell().error(message)
 
   defp fallback(errors) do
     Mix.shell().error("LLM analysis failed; falling back to NONE")

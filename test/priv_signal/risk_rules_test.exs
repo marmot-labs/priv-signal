@@ -3,8 +3,16 @@ defmodule PrivSignal.Risk.RulesTest do
 
   alias PrivSignal.Risk.Rules
 
-  defp event(type, id) do
-    %{type: type, id: id, evidence: "lib/foo.ex:10", confidence: 0.9}
+  defp event(:flow_touched, id) do
+    %{type: :flow_touched, flow_id: id, evidence: "lib/foo.ex:10", confidence: 0.9}
+  end
+
+  defp event(:new_pii, id) do
+    %{type: :new_pii, pii_category: id, evidence: "lib/foo.ex:10", confidence: 0.9}
+  end
+
+  defp event(:new_sink, id) do
+    %{type: :new_sink, sink: id, evidence: "lib/foo.ex:10", confidence: 0.9}
   end
 
   test "none when no events" do

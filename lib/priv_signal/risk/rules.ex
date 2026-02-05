@@ -57,7 +57,8 @@ defmodule PrivSignal.Risk.Rules do
 
   defp sensitive_data?(events, config) do
     Enum.any?(events, fn event ->
-      event.type == :new_pii and normalize_string(event.pii_category) in config.sensitive_categories
+      event.type == :new_pii and
+        normalize_string(event.pii_category) in config.sensitive_categories
     end)
   end
 
@@ -72,9 +73,13 @@ defmodule PrivSignal.Risk.Rules do
   defp reasons(events, config) do
     reasons = []
 
-    reasons = if flow_touched?(events), do: ["Touches existing defined flow" | reasons], else: reasons
+    reasons =
+      if flow_touched?(events), do: ["Touches existing defined flow" | reasons], else: reasons
+
     reasons = if new_pii?(events), do: ["Introduces new PII categories" | reasons], else: reasons
-    reasons = if new_internal_sink?(events), do: ["Introduces new sink/export" | reasons], else: reasons
+
+    reasons =
+      if new_internal_sink?(events), do: ["Introduces new sink/export" | reasons], else: reasons
 
     reasons =
       if new_outside_flows?(events, config) do
