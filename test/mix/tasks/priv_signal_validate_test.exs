@@ -38,6 +38,26 @@ defmodule Mix.Tasks.PrivSignal.ValidateTest do
     end)
   end
 
+  test "mix priv_signal.validate fails when pii module is missing" do
+    tmp_dir =
+      Path.join(System.tmp_dir!(), "priv_signal_validate_#{System.unique_integer([:positive])}")
+
+    File.mkdir_p!(tmp_dir)
+
+    File.cd!(tmp_dir, fn ->
+      File.write!("priv-signal.yml", missing_pii_yaml())
+
+      Mix.shell(Mix.Shell.Process)
+
+      assert_raise Mix.Error, ~r/data flow validation failed/, fn ->
+        Mix.Tasks.PrivSignal.Validate.run([])
+      end
+
+      errors = collect_errors([])
+      assert Enum.any?(errors, &String.contains?(&1, "missing pii module"))
+    end)
+  end
+
   defp passing_yaml do
     """
     version: 1
@@ -80,6 +100,28 @@ defmodule Mix.Tasks.PrivSignal.ValidateTest do
             function: load
           - module: PrivSignal.Config
             function: missing_function
+        exits_system: false
+    """
+  end
+
+  defp missing_pii_yaml do
+    """
+    version: 1
+
+    pii_modules:
+      - Missing.PII.Module
+
+    flows:
+      - id: config_load_chain
+        description: "Config load chain"
+        purpose: setup
+        pii_categories:
+          - config
+        path:
+          - module: PrivSignal.Config.Loader
+            function: load
+          - module: PrivSignal.Config
+            function: from_map
         exits_system: false
     """
   end

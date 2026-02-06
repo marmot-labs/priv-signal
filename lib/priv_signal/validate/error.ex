@@ -11,12 +11,20 @@ defmodule PrivSignal.Validate.Error do
     %__MODULE__{type: :missing_function, flow_id: flow_id, module: module, function: function}
   end
 
+  def missing_pii_module(module) do
+    %__MODULE__{type: :missing_pii_module, module: module}
+  end
+
   def format(%__MODULE__{type: :missing_module, module: module}) do
     "missing module #{format_module(module)}"
   end
 
   def format(%__MODULE__{type: :missing_function, module: module, function: function}) do
     "missing function #{format_module(module)}.#{format_function(function)}"
+  end
+
+  def format(%__MODULE__{type: :missing_pii_module, module: module}) do
+    "missing pii module #{format_module(module)}"
   end
 
   def format(error), do: inspect(error)
