@@ -58,12 +58,36 @@ defmodule Mix.Tasks.PrivSignal.ValidateTest do
     end)
   end
 
+  test "mix priv_signal.validate fails with deprecated pii_modules config" do
+    tmp_dir =
+      Path.join(System.tmp_dir!(), "priv_signal_validate_#{System.unique_integer([:positive])}")
+
+    File.mkdir_p!(tmp_dir)
+
+    File.cd!(tmp_dir, fn ->
+      File.write!("priv-signal.yml", deprecated_yaml())
+
+      Mix.shell(Mix.Shell.Process)
+
+      assert_raise Mix.Error, ~r/data flow validation failed/, fn ->
+        Mix.Tasks.PrivSignal.Validate.run([])
+      end
+
+      errors = collect_errors([])
+      assert Enum.any?(errors, &String.contains?(&1, "pii_modules is deprecated"))
+    end)
+  end
+
   defp passing_yaml do
     """
     version: 1
 
-    pii_modules:
-      - PrivSignal.Config
+    pii:
+      - module: PrivSignal.Config
+        fields:
+          - name: email
+            category: contact
+            sensitivity: medium
 
     flows:
       - id: config_load_chain
@@ -86,8 +110,12 @@ defmodule Mix.Tasks.PrivSignal.ValidateTest do
     """
     version: 1
 
-    pii_modules:
-      - PrivSignal.Config
+    pii:
+      - module: PrivSignal.Config
+        fields:
+          - name: email
+            category: contact
+            sensitivity: medium
 
     flows:
       - id: config_load_chain
@@ -108,8 +136,12 @@ defmodule Mix.Tasks.PrivSignal.ValidateTest do
     """
     version: 1
 
-    pii_modules:
-      - Missing.PII.Module
+    pii:
+      - module: Missing.PII.Module
+        fields:
+          - name: email
+            category: contact
+            sensitivity: medium
 
     flows:
       - id: config_load_chain
@@ -123,6 +155,17 @@ defmodule Mix.Tasks.PrivSignal.ValidateTest do
           - module: PrivSignal.Config
             function: from_map
         exits_system: false
+    """
+  end
+
+  defp deprecated_yaml do
+    """
+    version: 1
+
+    pii_modules:
+      - PrivSignal.Config
+
+    flows: []
     """
   end
 

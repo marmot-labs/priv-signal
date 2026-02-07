@@ -1,0 +1,15 @@
+version: 1
+
+pii_modules:
+  - Fixtures.Scan.User
+
+flows:
+  - id: legacy_flow
+    description: "Legacy flow using old config key"
+    purpose: audit
+    pii_categories:
+      - email
+    path:
+      - module: Fixtures.Scan.ConfirmedPIILogging
+        function: log_user_email
+    exits_system: false

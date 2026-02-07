@@ -2,7 +2,7 @@ defmodule PrivSignal.ValidateTest do
   use ExUnit.Case
 
   alias PrivSignal.Config
-  alias PrivSignal.Config.{Flow, PathStep}
+  alias PrivSignal.Config.{Flow, PIIEntry, PIIField, PathStep}
   alias PrivSignal.Validate
   alias PrivSignal.Validate.Index
 
@@ -63,12 +63,17 @@ defmodule PrivSignal.ValidateTest do
 
   test "missing pii module produces :missing_pii_module error" do
     config = %Config{
-      pii_modules: ["Missing.PII.Module"],
+      pii: [
+        %PIIEntry{
+          module: "Missing.PII.Module",
+          fields: [%PIIField{name: "email", category: "contact", sensitivity: "medium"}]
+        }
+      ],
       flows: []
     }
 
     assert {:ok, [result]} = Validate.run(config, index: [root: fixture_root(), paths: ["lib"]])
-    assert result.flow_id == "pii_modules"
+    assert result.flow_id == "pii"
     assert result.status == :error
     assert Enum.any?(result.errors, &(&1.type == :missing_pii_module))
   end

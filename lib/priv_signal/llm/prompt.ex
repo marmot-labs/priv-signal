@@ -27,11 +27,19 @@ defmodule PrivSignal.LLM.Prompt do
 
       Use the YAML flow map to ground decisions:
       - The YAML config has two main sections:
-        1) pii_modules: the primary modules that define or contain PII (typically user/account records).
+        1) pii: project-declared PII containers and fields.
            Example:
-           pii_modules:
-             - Oli.Accounts.User
-             - Oli.Accounts.Author
+           pii:
+             - module: Oli.Accounts.User
+               fields:
+                 - name: email
+                   category: contact
+                   sensitivity: medium
+             - module: Oli.Accounts.Author
+               fields:
+                 - name: email
+                   category: contact
+                   sensitivity: medium
         2) flows: one or more data flows that involve PII. Each flow defines:
            - id: unique identifier for the flow (used in touched_flows)
            - description: human-readable summary of the flow
@@ -43,9 +51,15 @@ defmodule PrivSignal.LLM.Prompt do
       - Full example:
         version: 1
 
-        pii_modules:
-          - Oli.Accounts.User
-          - Oli.Accounts.Author
+        pii:
+          - module: Oli.Accounts.User
+            fields:
+              - name: user_id
+                category: identifier
+                sensitivity: low
+              - name: ip_address
+                category: contact
+                sensitivity: medium
 
         flows:
           - id: xapi_export

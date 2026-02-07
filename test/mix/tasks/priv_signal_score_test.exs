@@ -41,12 +41,34 @@ defmodule Mix.Tasks.PrivSignal.ScoreTest do
     end)
   end
 
+  test "reports config error when deprecated pii_modules key is used" do
+    tmp_dir =
+      Path.join(System.tmp_dir!(), "priv_signal_score_#{System.unique_integer([:positive])}")
+
+    File.mkdir_p!(tmp_dir)
+
+    File.cd!(tmp_dir, fn ->
+      File.write!("priv-signal.yml", deprecated_yaml())
+
+      Mix.shell(Mix.Shell.Process)
+      Mix.Tasks.PrivSignal.Score.run([])
+
+      errors = collect_errors([])
+      assert Enum.any?(errors, &String.contains?(&1, "priv-signal.yml is invalid"))
+      assert Enum.any?(errors, &String.contains?(&1, "pii_modules is deprecated"))
+    end)
+  end
+
   defp sample_yaml do
     """
     version: 1
 
-    pii_modules:
-      - PrivSignal.Config
+    pii:
+      - module: PrivSignal.Config
+        fields:
+          - name: email
+            category: contact
+            sensitivity: medium
 
     flows:
       - id: config_load_chain
@@ -69,8 +91,12 @@ defmodule Mix.Tasks.PrivSignal.ScoreTest do
     """
     version: 1
 
-    pii_modules:
-      - PrivSignal.Config
+    pii:
+      - module: PrivSignal.Config
+        fields:
+          - name: email
+            category: contact
+            sensitivity: medium
 
     flows:
       - id: broken_chain
@@ -84,6 +110,17 @@ defmodule Mix.Tasks.PrivSignal.ScoreTest do
           - module: PrivSignal.Config
             function: missing_function
         exits_system: false
+    """
+  end
+
+  defp deprecated_yaml do
+    """
+    version: 1
+
+    pii_modules:
+      - PrivSignal.Config
+
+    flows: []
     """
   end
 

@@ -1,0 +1,9 @@
+version: 1
+
+pii:
+  - module: Fixtures.Scan.User
+    fields:
+      - category: contact
+        sensitivity: medium
+
+flows: []

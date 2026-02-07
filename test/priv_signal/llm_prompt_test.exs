@@ -5,7 +5,18 @@ defmodule PrivSignal.LLM.PromptTest do
 
   test "builds messages with diff and config summary" do
     diff = "diff --git a/a b/a\n+new line"
-    summary = %{version: 1, pii_modules: ["MyApp.User"], flows: []}
+
+    summary = %{
+      version: 1,
+      pii: [
+        %{
+          module: "MyApp.User",
+          fields: [%{name: "email", category: "contact", sensitivity: "medium"}]
+        }
+      ],
+      pii_modules: ["MyApp.User"],
+      flows: []
+    }
 
     messages = Prompt.build(diff, summary)
 

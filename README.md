@@ -8,6 +8,7 @@ using a project-defined map of privacy-relevant data flows.
 ```bash
 mix priv_signal.init
 mix priv_signal.validate
+mix priv_signal.scan
 mix priv_signal.score --base origin/main --head HEAD
 ```
 
@@ -18,9 +19,15 @@ PrivSignal uses a repo-root `priv-signal.yml` file as the source of truth. Examp
 ```yaml
 version: 1
 
-pii_modules:
-  - MyApp.Accounts.User
-  - MyApp.Accounts.Author
+pii:
+  - module: MyApp.Accounts.User
+    fields:
+      - name: email
+        category: contact
+        sensitivity: medium
+      - name: user_id
+        category: identifier
+        sensitivity: low
 
 flows:
   - id: xapi_export
@@ -49,6 +56,55 @@ mix priv_signal.validate
 ```
 
 This validation step also runs automatically at the start of `mix priv_signal.score` and will fail fast if any configured flow is invalid.
+
+## Scanner
+
+Run deterministic static scanning for PII-relevant logging statements:
+
+```bash
+mix priv_signal.scan
+```
+
+Useful options:
+
+- `--strict`: fail command when any file parse/scan errors occur.
+- `--json-path PATH`: write scanner JSON to a custom path (default: `priv-signal-scan.json`).
+- `--quiet`: suppress markdown output to stdout.
+- `--timeout-ms N`: per-file scan timeout in milliseconds.
+- `--max-concurrency N`: max concurrent file workers (bounded internally).
+
+Example:
+
+```bash
+mix priv_signal.scan --strict --json-path tmp/priv-signal-scan.json --timeout-ms 3000 --max-concurrency 4
+```
+
+Scanner environment overrides:
+
+- `PRIV_SIGNAL_SCAN_TIMEOUT_MS`
+- `PRIV_SIGNAL_SCAN_MAX_CONCURRENCY`
+
+## Migration from `pii_modules`
+
+`pii_modules` is no longer accepted. Convert legacy config to `pii` entries with field metadata.
+
+Before:
+
+```yaml
+pii_modules:
+  - MyApp.Accounts.User
+```
+
+After:
+
+```yaml
+pii:
+  - module: MyApp.Accounts.User
+    fields:
+      - name: email
+        category: contact
+        sensitivity: medium
+```
 
 ## Environment Variables
 
@@ -93,6 +149,9 @@ PrivSignal emits `:telemetry` events for key steps:
 - `[:priv_signal, :llm, :request]`
 - `[:priv_signal, :risk, :assess]`
 - `[:priv_signal, :output, :write]`
+- `[:priv_signal, :scan, :inventory, :build]`
+- `[:priv_signal, :scan, :run]`
+- `[:priv_signal, :scan, :output, :write]`
 
 ## Installation
 

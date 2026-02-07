@@ -12,6 +12,9 @@ defmodule Mix.Tasks.PrivSignal.InitTest do
       Mix.Tasks.PrivSignal.Init.run([])
 
       assert File.exists?("priv-signal.yml")
+      content = File.read!("priv-signal.yml")
+      assert String.contains?(content, "pii:")
+      refute String.contains?(content, "pii_modules:")
     end)
   end
 end

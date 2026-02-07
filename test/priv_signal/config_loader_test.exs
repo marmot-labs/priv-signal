@@ -9,7 +9,7 @@ defmodule PrivSignal.Config.LoaderTest do
 
     assert {:ok, config} = Loader.load(path)
     assert config.version == 1
-    assert length(config.pii_modules) == 2
+    assert length(config.pii) == 2
     assert length(config.flows) == 1
   end
 
@@ -17,9 +17,17 @@ defmodule PrivSignal.Config.LoaderTest do
     """
     version: 1
 
-    pii_modules:
-      - MyApp.Accounts.User
-      - MyApp.Accounts.Author
+    pii:
+      - module: MyApp.Accounts.User
+        fields:
+          - name: email
+            category: contact
+            sensitivity: medium
+      - module: MyApp.Accounts.Author
+        fields:
+          - name: email
+            category: contact
+            sensitivity: medium
 
     flows:
       - id: xapi_export

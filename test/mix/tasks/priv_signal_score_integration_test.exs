@@ -80,8 +80,12 @@ defmodule Mix.Tasks.PrivSignal.ScoreIntegrationTest do
     """
     version: 1
 
-    pii_modules:
-      - PrivSignal.Config
+    pii:
+      - module: PrivSignal.Config
+        fields:
+          - name: email
+            category: contact
+            sensitivity: medium
 
     flows:
       - id: config_load_chain

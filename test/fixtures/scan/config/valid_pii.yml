@@ -1,0 +1,22 @@
+version: 1
+
+pii:
+  - module: Fixtures.Scan.User
+    fields:
+      - name: email
+        category: contact
+        sensitivity: medium
+      - name: phone
+        category: contact
+        sensitivity: medium
+
+flows:
+  - id: user_logging_flow
+    description: "User login logging flow"
+    purpose: audit
+    pii_categories:
+      - email
+    path:
+      - module: Fixtures.Scan.ConfirmedPIILogging
+        function: log_user_email
+    exits_system: false

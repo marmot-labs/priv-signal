@@ -3,9 +3,9 @@ defmodule PrivSignal.Config do
   In-memory representation of priv-signal.yml.
   """
 
-  alias PrivSignal.Config.{Flow, PathStep}
+  alias PrivSignal.Config.{Flow, PIIEntry, PIIField, PathStep}
 
-  defstruct version: 1, pii_modules: [], flows: []
+  defstruct version: 1, pii: [], flows: []
 
   defmodule Flow do
     @moduledoc false
@@ -23,12 +23,37 @@ defmodule PrivSignal.Config do
     defstruct module: nil, function: nil
   end
 
+  defmodule PIIEntry do
+    @moduledoc false
+    defstruct module: nil, fields: []
+  end
+
+  defmodule PIIField do
+    @moduledoc false
+    defstruct name: nil, category: nil, sensitivity: "medium"
+  end
+
   @doc false
   def from_map(map) when is_map(map) do
     %__MODULE__{
       version: get(map, :version),
-      pii_modules: get(map, :pii_modules) || [],
+      pii: Enum.map(get(map, :pii) || [], &pii_entry_from_map/1),
       flows: Enum.map(get(map, :flows) || [], &flow_from_map/1)
+    }
+  end
+
+  defp pii_entry_from_map(map) do
+    %PIIEntry{
+      module: get(map, :module),
+      fields: Enum.map(get(map, :fields) || [], &pii_field_from_map/1)
+    }
+  end
+
+  defp pii_field_from_map(map) do
+    %PIIField{
+      name: get(map, :name),
+      category: get(map, :category),
+      sensitivity: get(map, :sensitivity) || "medium"
     }
   end
 

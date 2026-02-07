@@ -23,9 +23,15 @@ defmodule Mix.Tasks.PrivSignal.Init do
     """
     version: 1
 
-    pii_modules:
-      - MyApp.Accounts.User
-      - MyApp.Accounts.Author
+    pii:
+      - module: MyApp.Accounts.User
+        fields:
+          - name: email
+            category: contact
+            sensitivity: medium
+          - name: user_id
+            category: identifier
+            sensitivity: low
 
     flows:
       - id: xapi_export

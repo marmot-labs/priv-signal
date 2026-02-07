@@ -11,7 +11,7 @@ defmodule PrivSignal.Validate do
   """
   def run(config, opts \\ []) do
     index_opts = Keyword.get(opts, :index, [])
-    pii_modules = config.pii_modules || []
+    pii_modules = PrivSignal.Config.PII.modules(config)
     flows = config.flows || []
     flow_count = length(flows) + 1
     # Build one index per run to keep validation deterministic and fast.
@@ -67,7 +67,7 @@ defmodule PrivSignal.Validate do
       |> Enum.reverse()
 
     status = if errors == [], do: :ok, else: :error
-    %Result{flow_id: "pii_modules", status: status, errors: errors}
+    %Result{flow_id: "pii", status: status, errors: errors}
   end
 
   defp validate_modules(steps, index, flow_id) do

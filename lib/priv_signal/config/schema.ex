@@ -9,7 +9,8 @@ defmodule PrivSignal.Config.Schema do
   def validate(map) when is_map(map) do
     errors = []
     errors = validate_version(map, errors)
-    errors = validate_pii_modules(map, errors)
+    errors = validate_legacy_pii_modules(map, errors)
+    errors = validate_pii(map, errors)
     errors = validate_flows(map, errors)
 
     if errors == [] do
@@ -29,16 +30,76 @@ defmodule PrivSignal.Config.Schema do
     end
   end
 
-  defp validate_pii_modules(map, errors) do
-    case get(map, :pii_modules) do
-      nil ->
-        ["pii_modules is required" | errors]
-
-      list ->
-        if list_of_strings?(list),
-          do: errors,
-          else: ["pii_modules must be a list of strings" | errors]
+  defp validate_legacy_pii_modules(map, errors) do
+    if Map.has_key?(map, :pii_modules) or Map.has_key?(map, "pii_modules") do
+      ["pii_modules is deprecated; use pii entries with module/fields metadata" | errors]
+    else
+      errors
     end
+  end
+
+  defp validate_pii(map, errors) do
+    case get(map, :pii) do
+      nil ->
+        ["pii is required" | errors]
+
+      list when is_list(list) ->
+        Enum.reduce(Enum.with_index(list), errors, fn {entry, idx}, acc ->
+          validate_pii_entry(entry, idx, acc)
+        end)
+
+      _ ->
+        ["pii must be a list" | errors]
+    end
+  end
+
+  defp validate_pii_entry(entry, idx, errors) when is_map(entry) do
+    errors =
+      case get(entry, :module) do
+        value when is_binary(value) and value != "" -> errors
+        _ -> ["pii[#{idx}].module must be a non-empty string" | errors]
+      end
+
+    case get(entry, :fields) do
+      fields when is_list(fields) and fields != [] ->
+        Enum.reduce(Enum.with_index(fields), errors, fn {field, field_idx}, acc ->
+          validate_pii_field(field, idx, field_idx, acc)
+        end)
+
+      _ ->
+        ["pii[#{idx}].fields must be a non-empty list" | errors]
+    end
+  end
+
+  defp validate_pii_entry(_, idx, errors), do: ["pii[#{idx}] must be a map" | errors]
+
+  defp validate_pii_field(field, idx, field_idx, errors) when is_map(field) do
+    errors =
+      case get(field, :name) do
+        value when is_binary(value) and value != "" -> errors
+        _ -> ["pii[#{idx}].fields[#{field_idx}].name must be a non-empty string" | errors]
+      end
+
+    errors =
+      case get(field, :category) do
+        value when is_binary(value) and value != "" -> errors
+        _ -> ["pii[#{idx}].fields[#{field_idx}].category must be a non-empty string" | errors]
+      end
+
+    case get(field, :sensitivity) do
+      nil ->
+        errors
+
+      value when value in ["low", "medium", "high"] ->
+        errors
+
+      _ ->
+        ["pii[#{idx}].fields[#{field_idx}].sensitivity must be low, medium, or high" | errors]
+    end
+  end
+
+  defp validate_pii_field(_, idx, field_idx, errors) do
+    ["pii[#{idx}].fields[#{field_idx}] must be a map" | errors]
   end
 
   defp validate_flows(map, errors) do
