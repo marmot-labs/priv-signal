@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.2",
+  "summary": {},
+  "nodes": [],
+  "flows": [
+    {
+      "id": "flow_export_roster_csv",
+      "source": "Demo.User.student_id",
+      "entrypoint": "DemoWeb.RosterController.export/2",
+      "sink": {"kind": "s3", "subtype": "RosterBucket"},
+      "boundary": "external",
+      "confidence": 0.95,
+      "evidence": ["node_1", "node_2"]
+    }
+  ],
+  "errors": []
+}

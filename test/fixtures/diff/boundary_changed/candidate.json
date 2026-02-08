@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.2",
+  "summary": {},
+  "nodes": [],
+  "flows": [
+    {
+      "id": "flow_analytics_event",
+      "source": "Demo.User.user_id",
+      "entrypoint": "Demo.Analytics.track/1",
+      "sink": {"kind": "http", "subtype": "MetricsAPI.send"},
+      "boundary": "external",
+      "confidence": 0.6,
+      "evidence": ["node_c"]
+    }
+  ],
+  "errors": []
+}

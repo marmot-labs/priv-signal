@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.2",
+  "summary": {},
+  "nodes": [],
+  "flows": [
+    {
+      "id": "flow_legacy_enrollment_sync",
+      "source": "Demo.User.email",
+      "entrypoint": "Demo.Enrollment.sync/1",
+      "sink": {"kind": "http", "subtype": "LegacyAPI"},
+      "boundary": "external",
+      "confidence": 0.7,
+      "evidence": ["node_9"]
+    }
+  ],
+  "errors": []
+}
