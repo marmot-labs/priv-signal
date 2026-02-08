@@ -36,7 +36,7 @@ defmodule PrivSignal.Scan.Output.Markdown do
 
   defp format_finding(finding) do
     location =
-      "#{finding.module}.#{finding.function}/#{finding.arity} (#{finding.file}:#{finding.line})"
+      "#{finding.module}.#{finding.function}/#{finding.arity} (#{normalize_file_path(finding.file)}:#{finding.line})"
 
     fields = Enum.map_join(finding.matched_fields || [], ", ", & &1.name)
 
@@ -44,7 +44,7 @@ defmodule PrivSignal.Scan.Output.Markdown do
   end
 
   defp format_error(error) do
-    file = error[:file] || "unknown_file"
+    file = normalize_file_path(error[:file]) || "unknown_file"
     reason = error[:reason] || "unknown_reason"
     "- #{file}: #{reason}"
   end
@@ -52,4 +52,24 @@ defmodule PrivSignal.Scan.Output.Markdown do
   defp format_severity(%{classification: :confirmed_pii, sensitivity: :high}), do: "HIGH"
   defp format_severity(%{classification: :confirmed_pii}), do: "MEDIUM"
   defp format_severity(_), do: "LOW"
+
+  defp normalize_file_path(nil), do: nil
+
+  defp normalize_file_path(path) when is_binary(path) do
+    cwd = String.replace(File.cwd!(), "\\", "/")
+    normalized_path = String.replace(path, "\\", "/")
+
+    case Path.type(normalized_path) do
+      :absolute ->
+        case Path.relative_to(normalized_path, cwd) do
+          relative when relative == normalized_path -> normalized_path
+          relative -> relative
+        end
+
+      :relative ->
+        normalized_path
+    end
+  end
+
+  defp normalize_file_path(path), do: path
 end

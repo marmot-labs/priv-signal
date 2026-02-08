@@ -1,53 +1,66 @@
-defmodule Mix.Tasks.PrivSignal.ScanTest do
+defmodule Mix.Tasks.PrivSignal.InferTest do
   use ExUnit.Case
 
-  test "mix priv_signal.scan succeeds and writes json output" do
-    tmp_dir = make_tmp_dir("priv_signal_scan_success")
+  test "mix priv_signal.infer succeeds and writes json output" do
+    tmp_dir = make_tmp_dir("priv_signal_infer_success")
 
     File.cd!(tmp_dir, fn ->
       write_valid_config()
       write_logging_source()
 
       Mix.shell(Mix.Shell.Process)
-      Mix.Task.reenable("priv_signal.scan")
-      Mix.Tasks.PrivSignal.Scan.run([])
+      Mix.Task.reenable("priv_signal.infer")
+      Mix.Tasks.PrivSignal.Infer.run([])
 
-      assert File.exists?("priv-signal-scan.json")
-      assert_received {:mix_shell, :info, [compat_message]}
-      assert String.contains?(compat_message, "compatibility mode")
+      assert File.exists?("priv-signal-infer.json")
       assert_received {:mix_shell, :info, ["priv-signal.yml is valid"]}
       assert_received {:mix_shell, :info, [message]}
-      assert String.contains?(message, "scan findings:")
+      assert String.contains?(message, "infer nodes:")
     end)
   end
 
-  test "mix priv_signal.scan strict mode fails on parse errors" do
-    tmp_dir = make_tmp_dir("priv_signal_scan_strict")
+  test "mix priv_signal.infer strict mode fails on parse errors" do
+    tmp_dir = make_tmp_dir("priv_signal_infer_strict")
 
     File.cd!(tmp_dir, fn ->
       write_valid_config()
       write_broken_source()
 
       Mix.shell(Mix.Shell.Process)
-      Mix.Task.reenable("priv_signal.scan")
+      Mix.Task.reenable("priv_signal.infer")
 
-      assert_raise Mix.Error, ~r/scan failed in strict mode/, fn ->
-        Mix.Tasks.PrivSignal.Scan.run(["--strict"])
+      assert_raise Mix.Error, ~r/infer failed in strict mode/, fn ->
+        Mix.Tasks.PrivSignal.Infer.run(["--strict"])
       end
     end)
   end
 
-  test "mix priv_signal.scan fails with deprecated config key" do
-    tmp_dir = make_tmp_dir("priv_signal_scan_deprecated")
+  test "mix priv_signal.infer respects --json-path" do
+    tmp_dir = make_tmp_dir("priv_signal_infer_json_path")
+
+    File.cd!(tmp_dir, fn ->
+      write_valid_config()
+      write_logging_source()
+
+      Mix.shell(Mix.Shell.Process)
+      Mix.Task.reenable("priv_signal.infer")
+      Mix.Tasks.PrivSignal.Infer.run(["--json-path", "tmp/infer.json", "--quiet"])
+
+      assert File.exists?("tmp/infer.json")
+    end)
+  end
+
+  test "mix priv_signal.infer fails with deprecated config key" do
+    tmp_dir = make_tmp_dir("priv_signal_infer_deprecated")
 
     File.cd!(tmp_dir, fn ->
       File.write!("priv-signal.yml", deprecated_config_yaml())
 
       Mix.shell(Mix.Shell.Process)
-      Mix.Task.reenable("priv_signal.scan")
+      Mix.Task.reenable("priv_signal.infer")
 
-      assert_raise Mix.Error, ~r/scan failed/, fn ->
-        Mix.Tasks.PrivSignal.Scan.run([])
+      assert_raise Mix.Error, ~r/infer failed/, fn ->
+        Mix.Tasks.PrivSignal.Infer.run([])
       end
 
       errors = collect_errors([])
@@ -56,35 +69,20 @@ defmodule Mix.Tasks.PrivSignal.ScanTest do
     end)
   end
 
-  test "mix priv_signal.scan respects --json-path" do
-    tmp_dir = make_tmp_dir("priv_signal_scan_json_path")
+  test "README infer example flags work together" do
+    tmp_dir = make_tmp_dir("priv_signal_infer_readme_example")
 
     File.cd!(tmp_dir, fn ->
       write_valid_config()
       write_logging_source()
 
       Mix.shell(Mix.Shell.Process)
-      Mix.Task.reenable("priv_signal.scan")
-      Mix.Tasks.PrivSignal.Scan.run(["--json-path", "tmp/scan.json", "--quiet"])
+      Mix.Task.reenable("priv_signal.infer")
 
-      assert File.exists?("tmp/scan.json")
-    end)
-  end
-
-  test "README scanner example flags work together" do
-    tmp_dir = make_tmp_dir("priv_signal_scan_readme_example")
-
-    File.cd!(tmp_dir, fn ->
-      write_valid_config()
-      write_logging_source()
-
-      Mix.shell(Mix.Shell.Process)
-      Mix.Task.reenable("priv_signal.scan")
-
-      Mix.Tasks.PrivSignal.Scan.run([
+      Mix.Tasks.PrivSignal.Infer.run([
         "--strict",
         "--json-path",
-        "tmp/priv-signal-scan.json",
+        "tmp/priv-signal-infer.json",
         "--timeout-ms",
         "3000",
         "--max-concurrency",
@@ -92,7 +90,7 @@ defmodule Mix.Tasks.PrivSignal.ScanTest do
         "--quiet"
       ])
 
-      assert File.exists?("tmp/priv-signal-scan.json")
+      assert File.exists?("tmp/priv-signal-infer.json")
     end)
   end
 

@@ -46,6 +46,7 @@ defmodule PrivSignal.Scan.Output.JSONTest do
     json = JSON.render(result)
 
     assert json.scanner_version == "1"
+    assert json.path_mode == "repo_relative_posix_when_possible"
     assert json.summary.confirmed_count == 1
     assert json.inventory.field_count == 1
     assert length(json.findings) == 1

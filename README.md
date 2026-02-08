@@ -8,7 +8,7 @@ using a project-defined map of privacy-relevant data flows.
 ```bash
 mix priv_signal.init
 mix priv_signal.validate
-mix priv_signal.scan
+mix priv_signal.infer
 mix priv_signal.score --base origin/main --head HEAD
 ```
 
@@ -57,13 +57,50 @@ mix priv_signal.validate
 
 This validation step also runs automatically at the start of `mix priv_signal.score` and will fail fast if any configured flow is invalid.
 
-## Scanner
+## Infer Inventory
+
+Run deterministic static scanning to generate a node inventory artifact:
+
+```bash
+mix priv_signal.infer
+```
+
+Useful options:
+
+- `--strict`: fail command when any file parse/scan errors occur.
+- `--json-path PATH`: write infer JSON to a custom path (default: `priv-signal-infer.json`).
+- `--quiet`: suppress markdown output to stdout.
+- `--timeout-ms N`: per-file scan timeout in milliseconds.
+- `--max-concurrency N`: max concurrent file workers (bounded internally).
+
+Example:
+
+```bash
+mix priv_signal.infer --strict --json-path tmp/priv-signal-infer.json --timeout-ms 3000 --max-concurrency 4
+```
+
+Infer schema notes:
+
+- Node keys are currently frozen as `node_type` and `code_context`.
+- Proto flow keys are emitted under top-level `flows` when `PRIV_SIGNAL_INFER_PROTO_FLOWS_V1` is enabled (default).
+- `schema_version` governs compatibility; any breaking key rename will bump `schema_version`.
+- `code_context` contains module/function/file path; line evidence belongs in `evidence`.
+
+Infer feature flag:
+
+- `PRIV_SIGNAL_INFER_PROTO_FLOWS_V1` (`true` by default)
+  - `true`: emits inferred `flows` in infer artifact
+  - `false`: emits `nodes` only (`flows: []`)
+
+## Scanner Compatibility
 
 Run deterministic static scanning for PII-relevant logging statements:
 
 ```bash
 mix priv_signal.scan
 ```
+
+`mix priv_signal.scan` remains available for compatibility and will be removed in a future release. Prefer `mix priv_signal.infer`.
 
 Useful options:
 
@@ -152,6 +189,10 @@ PrivSignal emits `:telemetry` events for key steps:
 - `[:priv_signal, :scan, :inventory, :build]`
 - `[:priv_signal, :scan, :run]`
 - `[:priv_signal, :scan, :output, :write]`
+- `[:priv_signal, :infer, :run, :start]`
+- `[:priv_signal, :infer, :flow, :build]`
+- `[:priv_signal, :infer, :run, :stop]`
+- `[:priv_signal, :infer, :output, :write]`
 
 ## Installation
 

@@ -1,0 +1,5 @@
+defmodule Fixtures.ParseFailure do
+  def broken_fn( do
+    :ok
+  end
+end

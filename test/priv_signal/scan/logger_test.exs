@@ -19,6 +19,7 @@ defmodule PrivSignal.Scan.LoggerTest do
     assert finding.module == "Fixtures.Scan.ConfirmedPIILogging"
     assert finding.function == "log_user_email"
     assert finding.arity == 1
+    assert finding.file == path
     assert finding.sink == "Logger.info"
     assert finding.line == 5
     assert Enum.any?(finding.evidence, &(&1.type == :direct_field_access))

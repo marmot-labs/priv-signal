@@ -1,10 +1,10 @@
-defmodule Mix.Tasks.PrivSignal.Scan do
+defmodule Mix.Tasks.PrivSignal.Infer do
   use Mix.Task
 
-  @shortdoc "Scan source for PII-relevant logging statements"
+  @shortdoc "Generate deterministic PII node inventory"
 
   @moduledoc """
-  Runs the PII logging scanner and writes deterministic JSON output.
+  Runs infer inventory generation and writes deterministic JSON output.
 
   Options:
   - `--strict`
@@ -25,18 +25,17 @@ defmodule Mix.Tasks.PrivSignal.Scan do
   @impl true
   def run(args) do
     _ = PrivSignal.Runtime.ensure_started()
-    Mix.shell().info("mix priv_signal.scan is compatibility mode; prefer mix priv_signal.infer")
 
     {opts, _argv, _invalid} = OptionParser.parse(args, strict: @switches)
     strict? = Keyword.get(opts, :strict, false)
     quiet? = Keyword.get(opts, :quiet, false)
-    json_path = Keyword.get(opts, :json_path, "priv-signal-scan.json")
+    json_path = Keyword.get(opts, :json_path, "priv-signal-infer.json")
     timeout_ms = Keyword.get(opts, :timeout_ms)
     max_concurrency = Keyword.get(opts, :max_concurrency)
 
     with {:ok, config} <- load_config(),
          run_result <-
-           PrivSignal.Scan.Runner.run(config,
+           PrivSignal.Infer.Runner.run(config,
              strict: strict?,
              timeout: timeout_ms,
              max_concurrency: max_concurrency
@@ -50,37 +49,35 @@ defmodule Mix.Tasks.PrivSignal.Scan do
         {:error, {:strict_mode_failed, result}} ->
           emit_outputs(result, quiet?, json_path)
           emit_summary(result, json_path)
-          Mix.raise("scan failed in strict mode")
+          Mix.raise("infer failed in strict mode")
       end
     else
       {:error, errors} ->
         render_errors(errors)
-        Mix.raise("scan failed")
+        Mix.raise("infer failed")
     end
   end
 
   defp emit_outputs(result, quiet?, json_path) do
-    markdown = PrivSignal.Scan.Output.Markdown.render(result)
-    json = PrivSignal.Scan.Output.JSON.render(result)
+    markdown = PrivSignal.Infer.Output.Markdown.render(result)
+    json = PrivSignal.Infer.Output.JSON.render(result)
 
-    case PrivSignal.Scan.Output.Writer.write(markdown, json, quiet: quiet?, json_path: json_path) do
+    case PrivSignal.Infer.Output.Writer.write(markdown, json, quiet: quiet?, json_path: json_path) do
       {:ok, _path} ->
         :ok
 
       {:error, reason} ->
-        Mix.raise("failed to write scan output: #{inspect(reason)}")
+        Mix.raise("failed to write infer output: #{inspect(reason)}")
     end
   end
 
   defp emit_summary(result, json_path) do
-    summary = result.summary
+    summary = Map.get(result, :summary, %{})
 
-    Mix.shell().info(
-      "scan findings: confirmed=#{summary.confirmed_count} possible=#{summary.possible_count}"
-    )
-
-    Mix.shell().info("scan errors: #{summary.errors}")
-    Mix.shell().info("scan json written: #{json_path}")
+    Mix.shell().info("infer nodes: total=#{Map.get(summary, :node_count, 0)}")
+    Mix.shell().info("infer flows: total=#{Map.get(summary, :flow_count, 0)}")
+    Mix.shell().info("infer errors: #{Map.get(summary, :scan_error_count, 0)}")
+    Mix.shell().info("infer json written: #{json_path}")
   end
 
   defp render_errors(errors) when is_list(errors) do

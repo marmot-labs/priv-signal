@@ -1,0 +1,222 @@
+defmodule PrivSignal.Infer.FlowBuilder do
+  @moduledoc false
+
+  alias PrivSignal.Infer.{Contract, Flow, FlowIdentity, FlowScorer}
+
+  @external_sink_kinds MapSet.new([
+                         "http",
+                         "http_client",
+                         "external_http",
+                         "webhook",
+                         "s3",
+                         "smtp",
+                         "email",
+                         "third_party"
+                       ])
+
+  def build(nodes, opts \\ [])
+
+  def build(nodes, opts) when is_list(nodes) do
+    grouped =
+      nodes
+      |> Enum.reduce(%{}, fn node, acc ->
+        case group_key(node) do
+          nil -> acc
+          key -> Map.update(acc, key, [node], &[node | &1])
+        end
+      end)
+
+    flows =
+      grouped
+      |> Enum.flat_map(fn {key, group_nodes} -> flows_for_group(key, group_nodes, opts) end)
+      |> dedupe_by_semantics()
+      |> Contract.stable_sort_flows()
+
+    %{
+      flows: flows,
+      candidate_count: length(flows)
+    }
+  end
+
+  def build(_nodes, _opts), do: %{flows: [], candidate_count: 0}
+
+  defp flows_for_group({_module_name, _function_name, _file_path} = key, nodes, opts) do
+    sinks = Enum.filter(nodes, &(Map.get(&1, :node_type) == "sink"))
+    references = source_references(nodes)
+
+    if sinks == [] or references == [] do
+      []
+    else
+      entrypoint = entrypoint_for_group(key, nodes)
+
+      sinks
+      |> Enum.flat_map(fn sink ->
+        Enum.map(references, fn reference ->
+          flow_from_sink_reference(sink, reference, entrypoint, nodes, opts)
+        end)
+      end)
+    end
+  end
+
+  defp flow_from_sink_reference(sink, reference, entrypoint, group_nodes, opts) do
+    sink_kind = sink |> role_value(:kind) |> normalize_kind()
+    sink_subtype = sink |> role_value(:callee) |> normalize_subtype()
+    evidence = evidence_for_reference(group_nodes, sink, reference)
+    boundary = boundary_for_kind(sink_kind)
+
+    confidence =
+      FlowScorer.score(
+        %{
+          same_function_context: true,
+          direct_reference: direct_reference?(sink, reference),
+          possible_pii: possible_pii?(sink),
+          indirect_only: not direct_reference?(sink, reference)
+        },
+        opts
+      )
+
+    flow = %Flow{
+      source: reference,
+      entrypoint: entrypoint,
+      sink: %{kind: sink_kind, subtype: sink_subtype},
+      boundary: boundary,
+      confidence: confidence,
+      evidence: evidence
+    }
+
+    %{flow | id: FlowIdentity.id(flow)}
+  end
+
+  defp evidence_for_reference(group_nodes, sink, reference) do
+    group_nodes
+    |> Enum.filter(fn node ->
+      node_id(node) == node_id(sink) or node_has_reference?(node, reference)
+    end)
+    |> Enum.map(&node_id/1)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
+    |> Enum.sort()
+  end
+
+  defp dedupe_by_semantics(flows) do
+    flows
+    |> Enum.group_by(fn flow ->
+      sink = Map.get(flow, :sink, %{})
+      {flow.source, flow.entrypoint, Map.get(sink, :kind), Map.get(sink, :subtype), flow.boundary}
+    end)
+    |> Enum.map(fn {_key, candidates} ->
+      candidates
+      |> Enum.sort_by(fn flow ->
+        {
+          -(flow.confidence || 0.0),
+          -length(flow.evidence || []),
+          flow.id || ""
+        }
+      end)
+      |> hd()
+    end)
+  end
+
+  defp source_references(nodes) do
+    nodes
+    |> Enum.flat_map(fn node ->
+      node
+      |> Map.get(:pii, Map.get(node, "pii", []))
+      |> Enum.map(fn pii -> Map.get(pii, :reference) || Map.get(pii, "reference") end)
+    end)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.map(&String.trim(to_string(&1)))
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.uniq()
+    |> Enum.sort()
+  end
+
+  defp direct_reference?(sink, reference) do
+    sink
+    |> Map.get(:pii, [])
+    |> Enum.any?(fn pii ->
+      (Map.get(pii, :reference) || Map.get(pii, "reference")) == reference
+    end)
+  end
+
+  defp possible_pii?(sink) do
+    value = Map.get(sink, :confidence)
+    is_number(value) and value <= 0.7
+  end
+
+  defp node_has_reference?(node, reference) do
+    node
+    |> Map.get(:pii, [])
+    |> Enum.any?(fn pii ->
+      (Map.get(pii, :reference) || Map.get(pii, "reference")) == reference
+    end)
+  end
+
+  defp group_key(node) do
+    context = Map.get(node, :code_context, %{})
+    module_name = Map.get(context, :module)
+    function_name = Map.get(context, :function)
+    file_path = Map.get(context, :file_path)
+
+    if blank?(module_name) or blank?(function_name) or blank?(file_path) do
+      nil
+    else
+      {module_name, function_name, file_path}
+    end
+  end
+
+  defp entrypoint_for_group({module_name, function_name, _file_path}, nodes) do
+    entrypoint_module =
+      nodes
+      |> Enum.find(fn node -> Map.get(node, :node_type) == "entrypoint" end)
+      |> case do
+        nil -> module_name
+        node -> node |> Map.get(:code_context, %{}) |> Map.get(:module) || module_name
+      end
+
+    entrypoint_function =
+      nodes
+      |> Enum.find(fn node -> Map.get(node, :node_type) == "entrypoint" end)
+      |> case do
+        nil -> function_name
+        node -> node |> Map.get(:code_context, %{}) |> Map.get(:function) || function_name
+      end
+
+    "#{entrypoint_module}.#{entrypoint_function}"
+  end
+
+  defp role_value(node, key) do
+    node
+    |> Map.get(:role, %{})
+    |> Map.get(key)
+  end
+
+  defp boundary_for_kind(kind) do
+    if MapSet.member?(@external_sink_kinds, normalize_kind(kind)) do
+      "external"
+    else
+      "internal"
+    end
+  end
+
+  defp normalize_kind(nil), do: "unknown"
+  defp normalize_kind(value), do: value |> to_string() |> String.trim() |> String.downcase()
+
+  defp normalize_subtype(nil), do: "unknown"
+
+  defp normalize_subtype(value) do
+    value
+    |> to_string()
+    |> String.trim()
+    |> case do
+      "" -> "unknown"
+      subtype -> subtype
+    end
+  end
+
+  defp node_id(node), do: Map.get(node, :id) || Map.get(node, "id")
+
+  defp blank?(value) when is_binary(value), do: String.trim(value) == ""
+  defp blank?(nil), do: true
+  defp blank?(_), do: false
+end
