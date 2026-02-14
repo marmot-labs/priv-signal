@@ -144,7 +144,7 @@ defmodule PrivSignal.Diff.ArtifactLoader do
   end
 
   defp artifact_path(options) do
-    Map.get(options, :artifact_path) || "priv-signal-infer.json"
+    Map.get(options, :artifact_path) || "priv_signal.lockfile.json"
   end
 
   defp candidate_path(options) do

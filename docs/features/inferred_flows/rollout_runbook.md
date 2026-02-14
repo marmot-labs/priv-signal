@@ -1,7 +1,7 @@
 # Proto Flow Inference v1 Rollout Runbook
 
 ## Scope
-Operational rollout for inferred `flows` in `mix priv_signal.infer` output.
+Operational rollout for inferred `flows` in `mix priv_signal.scan` output.
 
 ## Feature Flag
 - Env var: `PRIV_SIGNAL_INFER_PROTO_FLOWS_V1`
@@ -30,7 +30,7 @@ Suggested alerts:
 
 ## Rollback
 1. Set `PRIV_SIGNAL_INFER_PROTO_FLOWS_V1=false` in CI job environment.
-2. Re-run `mix priv_signal.infer` and confirm `flow_count == 0`.
+2. Re-run `mix priv_signal.scan` and confirm `flow_count == 0`.
 3. Keep node inventory in place for downstream compatibility.
 
 ## Verification Checklist

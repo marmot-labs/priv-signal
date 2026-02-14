@@ -5,7 +5,7 @@ References
 - FDD: `docs/features/enhanced_scan/fdd.md`
 
 ## Scope
-Deliver a deterministic, schema-versioned PII node inventory for PrivSignal by upgrading scanner output from finding-centric records to canonical nodes. Initial implemented scanner source remains logging sinks, with entrypoint classification scaffolding and inference-agnostic output (no edges). Integrate into `mix priv_signal.infer` while preserving operational compatibility with current `mix priv_signal.scan`.
+Deliver a deterministic, schema-versioned PII node inventory for PrivSignal by upgrading scanner output from finding-centric records to canonical nodes. Initial implemented scanner source remains logging sinks, with entrypoint classification scaffolding and inference-agnostic output (no edges). Integrate into `mix priv_signal.scan` while preserving operational compatibility with current `mix priv_signal.scan`.
 
 ## Non-Functional Guardrails
 - Determinism: identical repo + config + command options => byte-identical sorted node artifact.
@@ -16,8 +16,8 @@ Deliver a deterministic, schema-versioned PII node inventory for PrivSignal by u
 - Backward compatibility: no breakage to existing scan workflows during migration window.
 
 ## Clarifications (Default Assumptions)
-- `CL-01`: `mix priv_signal.infer` is introduced as canonical command; `mix priv_signal.scan` remains available for one minor release.
-- `CL-02`: default infer artifact path is `priv-signal-infer.json`; legacy scan output path remains unchanged.
+- `CL-01`: `mix priv_signal.scan` is introduced as canonical command; `mix priv_signal.scan` remains available for one minor release.
+- `CL-02`: default infer artifact path is `priv_signal.lockfile.json`; legacy scan output path remains unchanged.
 - `CL-03`: lockfile-style artifact omits non-semantic timestamps from identity-sensitive payload; commit metadata is retained.
 - `CL-04`: entrypoint classification is additive and non-blocking (confidence + evidence required).
 - `CL-05`: no DB/Ecto migrations are required in this feature scope.
@@ -68,7 +68,7 @@ Goal
 - Introduce infer command and stable artifact envelope without changing scanner semantics yet.
 
 Tasks
-- [x] Implement `Mix.Tasks.PrivSignal.Infer` with options: `--strict`, `--json-path`, `--quiet`, `--timeout-ms`, `--max-concurrency`.
+- [x] Implement `Mix.Tasks.PrivSignal.Scan` with options: `--strict`, `--json-path`, `--quiet`, `--timeout-ms`, `--max-concurrency`.
 - [x] Add infer runner shell (`PrivSignal.Infer.Runner`) that invokes existing scan pipeline as temporary backend.
 - [x] Implement infer output envelope (`schema_version`, `tool`, `git`, `summary`, `nodes`, `errors`).
 - [x] Add command compatibility path (`mix priv_signal.scan` emits deprecation hint and/or delegates when configured).
@@ -85,7 +85,7 @@ Tests to write/run
 - [x] Command: `mix test test/mix/tasks/priv_signal_infer_test.exs test/priv_signal/infer/output_envelope_test.exs test/mix/tasks/priv_signal_scan_test.exs`.
 
 Definition of Done
-- `mix priv_signal.infer` runs end-to-end and writes a versioned artifact envelope.
+- `mix priv_signal.scan` runs end-to-end and writes a versioned artifact envelope.
 - Compatibility behavior for `scan` is explicit and tested.
 
 Gate Criteria
@@ -173,7 +173,7 @@ Tests to write/run
 - [x] Command: `mix test test/priv_signal/infer/runner_integration_test.exs test/priv_signal/infer/output_json_test.exs test/priv_signal/infer/output_markdown_test.exs test/priv_signal/infer/resilience_test.exs`.
 
 Definition of Done
-- `mix priv_signal.infer` emits complete, deterministic node inventory artifact.
+- `mix priv_signal.scan` emits complete, deterministic node inventory artifact.
 - Strict/non-strict behavior is documented and tested.
 
 Gate Criteria

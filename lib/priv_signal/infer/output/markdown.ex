@@ -7,7 +7,7 @@ defmodule PrivSignal.Infer.Output.Markdown do
     errors = Map.get(result, :errors, [])
 
     lines = [
-      "## PrivSignal Infer Inventory",
+      "## PrivSignal Scan Lockfile",
       "",
       "**Schema version:** #{Map.get(result, :schema_version, "unknown")}",
       "**Node count:** #{Map.get(summary, :node_count, 0)}",

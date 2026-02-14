@@ -8,17 +8,17 @@ defmodule PrivSignal.Diff.RunnerTest do
     base = DiffFixtureHelper.load_fixture!("flow_added", :base) |> Jason.encode!()
     candidate = DiffFixtureHelper.load_fixture!("flow_added", :candidate) |> Jason.encode!()
 
-    git_runner = fn "git", ["show", "origin/main:priv-signal-infer.json"], _opts ->
+    git_runner = fn "git", ["show", "origin/main:priv_signal.lockfile.json"], _opts ->
       {base, 0}
     end
 
-    file_reader = fn "priv-signal-infer.json" -> {:ok, candidate} end
+    file_reader = fn "priv_signal.lockfile.json" -> {:ok, candidate} end
 
     options = %{
       base: "origin/main",
       candidate_ref: nil,
-      candidate_path: "priv-signal-infer.json",
-      artifact_path: "priv-signal-infer.json",
+      candidate_path: "priv_signal.lockfile.json",
+      artifact_path: "priv_signal.lockfile.json",
       include_confidence?: false,
       strict?: false,
       format: :human
@@ -36,8 +36,8 @@ defmodule PrivSignal.Diff.RunnerTest do
     options = %{
       base: "missing-ref",
       candidate_ref: nil,
-      candidate_path: "priv-signal-infer.json",
-      artifact_path: "priv-signal-infer.json",
+      candidate_path: "priv_signal.lockfile.json",
+      artifact_path: "priv_signal.lockfile.json",
       include_confidence?: false,
       strict?: false,
       format: :human
@@ -75,17 +75,17 @@ defmodule PrivSignal.Diff.RunnerTest do
       ])
       |> Jason.encode!()
 
-    git_runner = fn "git", ["show", "origin/main:priv-signal-infer.json"], _opts ->
+    git_runner = fn "git", ["show", "origin/main:priv_signal.lockfile.json"], _opts ->
       {base, 0}
     end
 
-    file_reader = fn "priv-signal-infer.json" -> {:ok, candidate} end
+    file_reader = fn "priv_signal.lockfile.json" -> {:ok, candidate} end
 
     options = %{
       base: "origin/main",
       candidate_ref: nil,
-      candidate_path: "priv-signal-infer.json",
-      artifact_path: "priv-signal-infer.json",
+      candidate_path: "priv_signal.lockfile.json",
+      artifact_path: "priv_signal.lockfile.json",
       include_confidence?: true,
       strict?: false,
       format: :json

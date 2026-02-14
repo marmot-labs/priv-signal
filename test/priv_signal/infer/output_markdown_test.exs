@@ -28,7 +28,7 @@ defmodule PrivSignal.Infer.Output.MarkdownTest do
         errors: []
       })
 
-    assert String.contains?(markdown, "## PrivSignal Infer Inventory")
+    assert String.contains?(markdown, "## PrivSignal Scan Lockfile")
     assert String.contains?(markdown, "**Node count:** 1")
     assert String.contains?(markdown, "[SINK] MyApp.Accounts.log_signup/2")
     assert String.contains?(markdown, "kind=logger")

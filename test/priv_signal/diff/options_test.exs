@@ -8,8 +8,8 @@ defmodule PrivSignal.Diff.OptionsTest do
 
     assert parsed.base == "origin/main"
     assert parsed.candidate_ref == nil
-    assert parsed.candidate_path == "priv-signal-infer.json"
-    assert parsed.artifact_path == "priv-signal-infer.json"
+    assert parsed.candidate_path == "priv_signal.lockfile.json"
+    assert parsed.artifact_path == "priv_signal.lockfile.json"
     assert parsed.format == :human
     refute parsed.include_confidence?
     refute parsed.strict?

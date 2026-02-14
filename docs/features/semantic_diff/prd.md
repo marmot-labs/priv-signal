@@ -26,7 +26,7 @@ This file is always human-authored and version-controlled.
 
 After making code changes or updating priv-signal.yml, the developer runs:
 
-mix priv_signal.infer --write-lock
+mix priv_signal.scan
 
 
 This command performs a full, AST-driven static analysis of the current codebase and generates a proto–data-flow lockfile that captures the inferred, privacy-relevant behavior of the system (e.g., PII usage at logs, boundaries, and sinks). The resulting lockfile is treated as a generated artifact, committed to the repository, and represents the accepted privacy baseline for that code state.
@@ -37,7 +37,7 @@ Updating the lockfile is an explicit action and signals that the developer ackno
 
 In CI, PrivSignal enforces the freshness of the lockfile by running:
 
-mix priv_signal.infer --check-lock
+mix priv_signal.scan --strict
 
 
 This command re-runs inference in memory and verifies that the committed lockfile exactly matches the inferred privacy behavior of the code under test. If the lockfile is missing or out of date, CI fails with a clear message instructing the developer to regenerate and commit the lockfile. CI never updates artifacts itself.
@@ -229,7 +229,7 @@ Then the command reports no semantic differences because it compares committed l
 AC-017 (FR-013)
 Given the candidate workspace lockfile artifact is missing
 When `mix priv_signal.diff` runs
-Then the command exits non-zero with an actionable error instructing the developer to run `mix priv_signal.infer --write-lock` and commit the updated lockfile.
+Then the command exits non-zero with an actionable error instructing the developer to run `mix priv_signal.scan` and commit the updated lockfile.
 
 AC-018 (FR-001, FR-013)
 Given valid `--base` and `--candidate-ref` values

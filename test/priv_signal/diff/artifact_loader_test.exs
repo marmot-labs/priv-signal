@@ -29,12 +29,12 @@ defmodule PrivSignal.Diff.ArtifactLoaderTest do
       ])
       |> Jason.encode!()
 
-    git_runner = fn "git", ["show", "origin/main:priv-signal-infer.json"], _opts ->
+    git_runner = fn "git", ["show", "origin/main:priv_signal.lockfile.json"], _opts ->
       send(self(), :git_base_called)
       {base_json, 0}
     end
 
-    file_reader = fn "priv-signal-infer.json" ->
+    file_reader = fn "priv_signal.lockfile.json" ->
       send(self(), :workspace_candidate_called)
       {:ok, candidate_json}
     end
@@ -42,8 +42,8 @@ defmodule PrivSignal.Diff.ArtifactLoaderTest do
     options = %{
       base: "origin/main",
       candidate_ref: nil,
-      candidate_path: "priv-signal-infer.json",
-      artifact_path: "priv-signal-infer.json",
+      candidate_path: "priv_signal.lockfile.json",
+      artifact_path: "priv_signal.lockfile.json",
       strict?: false
     }
 
@@ -70,11 +70,11 @@ defmodule PrivSignal.Diff.ArtifactLoaderTest do
       |> Jason.encode!()
 
     git_runner = fn
-      "git", ["show", "origin/main:priv-signal-infer.json"], _opts ->
+      "git", ["show", "origin/main:priv_signal.lockfile.json"], _opts ->
         send(self(), :git_base_called)
         {json, 0}
 
-      "git", ["show", "HEAD:priv-signal-infer.json"], _opts ->
+      "git", ["show", "HEAD:priv_signal.lockfile.json"], _opts ->
         send(self(), :git_candidate_called)
         {json, 0}
     end
@@ -87,7 +87,7 @@ defmodule PrivSignal.Diff.ArtifactLoaderTest do
       base: "origin/main",
       candidate_ref: "HEAD",
       candidate_path: nil,
-      artifact_path: "priv-signal-infer.json",
+      artifact_path: "priv_signal.lockfile.json",
       strict?: false
     }
 
@@ -118,8 +118,8 @@ defmodule PrivSignal.Diff.ArtifactLoaderTest do
         ])
         |> Jason.encode!(pretty: true)
 
-      File.write!("priv-signal-infer.json", base_artifact)
-      git!(["add", "priv-signal-infer.json"])
+      File.write!("priv_signal.lockfile.json", base_artifact)
+      git!(["add", "priv_signal.lockfile.json"])
       git!(["commit", "-m", "base lockfile"])
 
       candidate_artifact =
@@ -134,13 +134,13 @@ defmodule PrivSignal.Diff.ArtifactLoaderTest do
         ])
         |> Jason.encode!(pretty: true)
 
-      File.write!("priv-signal-infer.json", candidate_artifact)
+      File.write!("priv_signal.lockfile.json", candidate_artifact)
 
       options = %{
         base: "HEAD",
         candidate_ref: nil,
-        candidate_path: "priv-signal-infer.json",
-        artifact_path: "priv-signal-infer.json",
+        candidate_path: "priv_signal.lockfile.json",
+        artifact_path: "priv_signal.lockfile.json",
         strict?: false
       }
 
@@ -168,15 +168,15 @@ defmodule PrivSignal.Diff.ArtifactLoaderTest do
         ])
         |> Jason.encode!(pretty: true)
 
-      File.write!("priv-signal-infer.json", artifact)
-      git!(["add", "priv-signal-infer.json"])
+      File.write!("priv_signal.lockfile.json", artifact)
+      git!(["add", "priv_signal.lockfile.json"])
       git!(["commit", "-m", "base lockfile"])
 
       options = %{
         base: "missing-ref",
         candidate_ref: nil,
-        candidate_path: "priv-signal-infer.json",
-        artifact_path: "priv-signal-infer.json",
+        candidate_path: "priv_signal.lockfile.json",
+        artifact_path: "priv_signal.lockfile.json",
         strict?: false
       }
 
@@ -186,7 +186,7 @@ defmodule PrivSignal.Diff.ArtifactLoaderTest do
   end
 
   test "returns candidate artifact not found when workspace file is missing" do
-    git_runner = fn "git", ["show", "origin/main:priv-signal-infer.json"], _opts ->
+    git_runner = fn "git", ["show", "origin/main:priv_signal.lockfile.json"], _opts ->
       json =
         DiffFixtureHelper.build_artifact([
           %{
@@ -208,7 +208,7 @@ defmodule PrivSignal.Diff.ArtifactLoaderTest do
       base: "origin/main",
       candidate_ref: nil,
       candidate_path: "missing.json",
-      artifact_path: "priv-signal-infer.json",
+      artifact_path: "priv_signal.lockfile.json",
       strict?: false
     }
 
@@ -231,17 +231,17 @@ defmodule PrivSignal.Diff.ArtifactLoaderTest do
         ]
       })
 
-    git_runner = fn "git", ["show", "origin/main:priv-signal-infer.json"], _opts ->
+    git_runner = fn "git", ["show", "origin/main:priv_signal.lockfile.json"], _opts ->
       {minimal_artifact_json, 0}
     end
 
-    file_reader = fn "priv-signal-infer.json" -> {:ok, minimal_artifact_json} end
+    file_reader = fn "priv_signal.lockfile.json" -> {:ok, minimal_artifact_json} end
 
     options = %{
       base: "origin/main",
       candidate_ref: nil,
-      candidate_path: "priv-signal-infer.json",
-      artifact_path: "priv-signal-infer.json",
+      candidate_path: "priv_signal.lockfile.json",
+      artifact_path: "priv_signal.lockfile.json",
       strict?: true
     }
 

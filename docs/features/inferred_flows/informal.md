@@ -197,7 +197,7 @@ Changes in evidence ordering or confidence rounding must not cause unnecessary c
 
 Developer Experience
 
-Proto Flows are generated automatically as part of mix priv_signal.infer.
+Proto Flows are generated automatically as part of mix priv_signal.scan.
 
 Developers do not manually edit inferred flows.
 

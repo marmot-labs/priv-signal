@@ -27,7 +27,7 @@ Spec Alignment Note (2026-02-08): PRD and FDD are aligned on hybrid diff input m
 - Security: no secret leakage; no raw runtime PII values in logs/telemetry.
 
 ### Explicit Assumptions
-- A1: Lockfile path is stable and known (`priv-signal-infer.json` default), with optional override.
+- A1: Lockfile path is stable and known (`priv_signal.lockfile.json` default), with optional override.
 Impact: nonstandard repos should use `--artifact-path` or config fallback.
 - A2: `flow.id` is stable enough across compared artifacts to anchor changed-vs-added/removed logic.
 Impact: if IDs churn, diff quality degrades; we need identity fallback matching.
@@ -41,7 +41,7 @@ Impact: implementation can proceed without spec conflict.
 ## 3. Torus Context Summary
 ### What I Know
 - PrivSignal is a Mix-task CLI with command entrypoints in `lib/mix/tasks/*`.
-- `mix priv_signal.infer` already emits deterministic lockfile JSON (`priv-signal-infer.json`) with `nodes` and `flows` via `PrivSignal.Infer.Runner` and `PrivSignal.Infer.Output.JSON`.
+- `mix priv_signal.scan` emits deterministic lockfile JSON (`priv_signal.lockfile.json`) with `nodes` and `flows` via `PrivSignal.Infer.Runner` and `PrivSignal.Infer.Output.JSON`.
 - Scan/infer pipeline already uses bounded `Task.Supervisor.async_stream_nolink` patterns for failure isolation and backpressure in file analysis.
 - Current telemetry wrapper is a thin `PrivSignal.Telemetry.emit/3` over `:telemetry.execute/3`.
 - There is existing git command plumbing (`PrivSignal.Git.Options`, `PrivSignal.Git.Diff`) and a small diff utility (`PrivSignal.Diff.Hunks`).
@@ -124,14 +124,14 @@ Rejected: unnecessary operational coupling for CLI-first feature.
 - Local branch, default candidate from workspace file:
   - `mix priv_signal.diff --base origin/main`
 - Local branch with explicit candidate workspace file:
-  - `mix priv_signal.diff --base origin/main --candidate-path priv-signal-infer.json`
+  - `mix priv_signal.diff --base origin/main --candidate-path priv_signal.lockfile.json`
 - CI PR pipeline (base from target branch ref, candidate from checked-out PR workspace):
   - `git fetch origin main --depth=1`
   - `mix priv_signal.diff --base origin/main --format json --output tmp/priv-signal-diff.json`
 - Ref-to-ref comparison (both artifacts loaded from git objects, no workspace dependency):
   - `mix priv_signal.diff --base origin/main --candidate-ref HEAD`
 - Nonstandard lockfile path:
-  - `mix priv_signal.diff --base origin/main --artifact-path artifacts/privacy/priv-signal-infer.json`
+  - `mix priv_signal.diff --base origin/main --artifact-path artifacts/privacy/priv_signal.lockfile.json`
 
 ### 5.2 LiveView
 - Not applicable (CLI-only feature).
@@ -190,7 +190,7 @@ Representative compare algorithm:
 - Change fanout: dedupe change keys (`{flow_id, change_type, discriminator}`).
 
 ## 10. Failure Modes & Resilience
-- Missing base artifact at ref: explicit error with suggested `mix priv_signal.infer --write-lock` + commit.
+- Missing base artifact at ref: explicit error with suggested `mix priv_signal.scan` + commit.
 - Missing candidate workspace artifact: explicit error naming expected path and remediation.
 - Unsupported schema version: contract error with supported version list.
 - Malformed JSON: parse error with source/path context (base ref object or workspace path).

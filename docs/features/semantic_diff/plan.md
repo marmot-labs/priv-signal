@@ -14,7 +14,7 @@ This plan implements the Semantic Diff Engine described in `docs/features/semant
 - C1: PRD still states ref-to-ref candidate in some sections, while FDD defines hybrid mode (base ref + workspace candidate default).
 Default: implement FDD hybrid mode; update PRD during Phase 0 so specs match.
 - C2: Artifact path precedence not fully finalized.
-Default: `--artifact-path` CLI override > config value (if added) > `priv-signal-infer.json`.
+Default: `--artifact-path` CLI override > config value (if added) > `priv_signal.lockfile.json`.
 - C3: Optional confidence/scanner sections behavior.
 Default: warn-and-continue; `--strict` turns missing optional sections into non-zero exit.
 

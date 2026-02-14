@@ -1,7 +1,7 @@
 # Proto Flow Inference v1 (Single-Scope, Same-Unit) — Delivery Plan
 
 ## Scope
-This plan delivers Proto Flow inference per `docs/features/inferred_flows/prd.md` and `docs/features/inferred_flows/fdd.md` by extending `mix priv_signal.infer` output with deterministic top-level `flows` derived from canonical nodes.
+This plan delivers Proto Flow inference per `docs/features/inferred_flows/prd.md` and `docs/features/inferred_flows/fdd.md` by extending `mix priv_signal.scan` output with deterministic top-level `flows` derived from canonical nodes.
 
 ## Non-Functional Guardrails
 - Determinism: unchanged input must yield byte-identical `flows`.
@@ -12,7 +12,7 @@ This plan delivers Proto Flow inference per `docs/features/inferred_flows/prd.md
 - Compatibility: existing `nodes` contract remains consumable; schema version bumped to include `flows`.
 
 ## Clarifications (Defaults Applied)
-- PRD `privsignal.json` maps to runtime default `priv-signal-infer.json`.
+- PRD `privsignal.json` maps to runtime default `priv_signal.lockfile.json`.
 - One sink + many references emits one flow per reference.
 - No confidence emission threshold in v1.
 - Feature flag kill-switch is `PRIV_SIGNAL_INFER_PROTO_FLOWS_V1`.
@@ -95,7 +95,7 @@ mix test test/priv_signal/infer/runner_integration_test.exs test/priv_signal/inf
 - [x] Existing node consumers continue to work.
 
 ### Definition of Done
-`mix priv_signal.infer` emits `nodes` + `flows` in a stable schema-validated envelope.
+`mix priv_signal.scan` emits `nodes` + `flows` in a stable schema-validated envelope.
 
 ## Phase 4: Telemetry, Flagging, and Operational Safety
 ### Goal

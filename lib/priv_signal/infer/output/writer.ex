@@ -4,7 +4,7 @@ defmodule PrivSignal.Infer.Output.Writer do
   require Logger
 
   def write(markdown, json, opts \\ []) do
-    json_path = Keyword.get(opts, :json_path, "priv-signal-infer.json")
+    json_path = Keyword.get(opts, :json_path, "priv_signal.lockfile.json")
     quiet? = Keyword.get(opts, :quiet, false)
     start = System.monotonic_time()
 

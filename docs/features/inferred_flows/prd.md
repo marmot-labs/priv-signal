@@ -55,7 +55,7 @@ Why now:
 
 **Primary Users / Roles**
 
-- `Maintainer`: runs `mix priv_signal.infer` locally/in CI and reviews diffs.
+- `Maintainer`: runs `mix priv_signal.scan` locally/in CI and reviews diffs.
 - `Privacy Reviewer`: evaluates inferred flows and confidence/evidence during PR review.
 - `Platform Integrator`: consumes `privsignal.json` for dashboards or downstream automation.
 
@@ -69,14 +69,14 @@ Why now:
 
 **Key Screens/States**
 
-- CLI success state: `mix priv_signal.infer` completes and writes updated `privsignal.json` containing `flows`.
+- CLI success state: `mix priv_signal.scan` completes and writes updated `privsignal.json` containing `flows`.
 - CLI no-flow state: command succeeds with empty `flows` array when no candidates are found.
 - Review state: PR diff shows stable additions/removals/updates under `flows`.
 - Diagnostic state: each flow includes enough evidence (`node_id`s) to explain inference outcome.
 
 **Navigation & Entry Points**
 
-- Primary entrypoint: existing CLI command `mix priv_signal.infer`.
+- Primary entrypoint: existing CLI command `mix priv_signal.scan`.
 - Output entrypoint: repository root artifact `privsignal.json` (same artifact as Phase 1 inventory output).
 
 **Accessibility**
@@ -114,7 +114,7 @@ Why now:
 
 - **AC-001 (FR-001, FR-002)**
   - Given a function scope containing one confirmed PII node and one logger sink node
-  - When `mix priv_signal.infer` runs
+  - When `mix priv_signal.scan` runs
   - Then exactly one flow candidate is emitted for that scope.
 
 - **AC-002 (FR-003, FR-004)**
@@ -243,7 +243,7 @@ Why now:
 
 | Role | Action | Allowed |
 |---|---|---|
-| Maintainer/CI actor with repository read/write | Run `mix priv_signal.infer` and write `privsignal.json` | Yes |
+| Maintainer/CI actor with repository read/write | Run `mix priv_signal.scan` and write `privsignal.json` | Yes |
 | Read-only contributor | Review flow output in PR diffs | Yes |
 | External/LTI user roles | Trigger or modify inference | No (not applicable) |
 
@@ -285,7 +285,7 @@ Why now:
 **Assumptions**
 
 - Phase 1 node inventory already tags sink kinds/subtypes and entrypoint context sufficiently for same-unit grouping.
-- `mix priv_signal.infer` is the existing command path where flow inference should be integrated.
+- `mix priv_signal.scan` is the existing command path where flow inference should be integrated.
 - Confidence precision of two decimals is acceptable for diff stability.
 - Boundary classification can be decided from sink taxonomy without runtime destination lookup.
 
@@ -309,7 +309,7 @@ Why now:
 - Property tests:
   - Determinism under reordered input nodes (same semantic set).
 - Integration tests:
-  - End-to-end `mix priv_signal.infer` writes `flows` with expected schema.
+  - End-to-end `mix priv_signal.scan` writes `flows` with expected schema.
   - Backward compatibility for existing node-only consumers.
 - Regression/perf tests:
   - Compare runtime against baseline on benchmark corpus.

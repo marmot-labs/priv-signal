@@ -17,11 +17,11 @@ defmodule PrivSignal.Diff.CLIIntegrationTest do
         DiffFixtureHelper.load_fixture!("flow_added", :candidate)
         |> Jason.encode!(pretty: true)
 
-      File.write!("priv-signal-infer.json", base_artifact)
-      git!(["add", "priv-signal-infer.json"])
+      File.write!("priv_signal.lockfile.json", base_artifact)
+      git!(["add", "priv_signal.lockfile.json"])
       git!(["commit", "-m", "base"])
 
-      File.write!("priv-signal-infer.json", candidate_artifact)
+      File.write!("priv_signal.lockfile.json", candidate_artifact)
 
       Mix.shell(Mix.Shell.Process)
       Mix.Task.reenable("priv_signal.diff")
@@ -43,8 +43,8 @@ defmodule PrivSignal.Diff.CLIIntegrationTest do
         DiffFixtureHelper.load_fixture!("no_change", :base)
         |> Jason.encode!(pretty: true)
 
-      File.write!("priv-signal-infer.json", base_artifact)
-      git!(["add", "priv-signal-infer.json"])
+      File.write!("priv_signal.lockfile.json", base_artifact)
+      git!(["add", "priv_signal.lockfile.json"])
       git!(["commit", "-m", "base"])
 
       Mix.shell(Mix.Shell.Process)
@@ -76,8 +76,8 @@ defmodule PrivSignal.Diff.CLIIntegrationTest do
         DiffFixtureHelper.load_fixture!("no_change", :base)
         |> Jason.encode!(pretty: true)
 
-      File.write!("priv-signal-infer.json", artifact)
-      git!(["add", "priv-signal-infer.json"])
+      File.write!("priv_signal.lockfile.json", artifact)
+      git!(["add", "priv_signal.lockfile.json"])
       git!(["commit", "-m", "base"])
 
       Mix.shell(Mix.Shell.Process)

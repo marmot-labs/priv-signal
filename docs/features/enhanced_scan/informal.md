@@ -199,7 +199,7 @@ Telemetry/analytics events
 
 Developer Experience
 
-Running mix priv_signal.infer produces a node inventory as part of the generated artifact.
+Running mix priv_signal.scan produces a node inventory as part of the generated artifact.
 
 Developers do not manually edit node definitions.
 

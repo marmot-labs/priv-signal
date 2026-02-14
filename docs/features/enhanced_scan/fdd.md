@@ -1,7 +1,7 @@
 # Enhanced PII Node Inventory — FDD
 
 ## 1. Executive Summary
-This design upgrades PrivSignal scanner output from finding-centric records to a deterministic node inventory that is ready for future Proto Flow inference. It affects developers, privacy reviewers, and CI maintainers by producing a stable JSON artifact that can be diffed and versioned across runs. The implementation reuses the existing scanner pipeline (`PrivSignal.Scan.Runner`, `PrivSignal.Scan.Logger`, `PrivSignal.Scan.Inventory`) and introduces a normalization layer that emits node contracts independent of any single scanner rule. The first productionized node source remains logging sinks, while entrypoint classification is added as scaffolding metadata and optional node generation. The architecture keeps flow inference out of scope and enforces a strict boundary: scanners discover local evidence; the node layer canonicalizes identity; output writers serialize. OTP alignment remains lightweight and robust: bounded `Task.Supervisor.async_stream_nolink/6`, per-file failure isolation, deterministic reduction, and no long-lived global bottleneck process. Performance posture is CI-safe by design with bounded concurrency, immutable shared inventory, and deterministic sort/fingerprint finalization. Privacy posture is improved because artifacts contain symbol-level code evidence only, never runtime values, and telemetry/log metadata remains cardinality-safe. The highest risks are identity instability and schema drift; both are mitigated with canonical identity rules, schema versioning, and property tests. This design also addresses command-surface drift by introducing `mix priv_signal.infer` as the canonical entrypoint while preserving compatibility with `mix priv_signal.scan`.
+This design upgrades PrivSignal scanner output from finding-centric records to a deterministic node inventory that is ready for future Proto Flow inference. It affects developers, privacy reviewers, and CI maintainers by producing a stable JSON artifact that can be diffed and versioned across runs. The implementation reuses the existing scanner pipeline (`PrivSignal.Scan.Runner`, `PrivSignal.Scan.Logger`, `PrivSignal.Scan.Inventory`) and introduces a normalization layer that emits node contracts independent of any single scanner rule. The first productionized node source remains logging sinks, while entrypoint classification is added as scaffolding metadata and optional node generation. The architecture keeps flow inference out of scope and enforces a strict boundary: scanners discover local evidence; the node layer canonicalizes identity; output writers serialize. OTP alignment remains lightweight and robust: bounded `Task.Supervisor.async_stream_nolink/6`, per-file failure isolation, deterministic reduction, and no long-lived global bottleneck process. Performance posture is CI-safe by design with bounded concurrency, immutable shared inventory, and deterministic sort/fingerprint finalization. Privacy posture is improved because artifacts contain symbol-level code evidence only, never runtime values, and telemetry/log metadata remains cardinality-safe. The highest risks are identity instability and schema drift; both are mitigated with canonical identity rules, schema versioning, and property tests. This design also addresses command-surface drift by introducing `mix priv_signal.scan` as the canonical entrypoint while preserving compatibility with `mix priv_signal.scan`.
 
 ## 2. Requirements & Assumptions
 ### Functional Requirements
@@ -32,7 +32,7 @@ This design upgrades PrivSignal scanner output from finding-centric records to a
 ### Explicit Assumptions
 - A1: Existing `PrivSignal.Scan.Logger` and `PrivSignal.Scan.Runner` remain the execution backbone.
 Impact: delivery is incremental and low-risk but constrained by current AST extraction strategy.
-- A2: The repo currently exposes `mix priv_signal.scan`; `mix priv_signal.infer` will be introduced as alias/new task.
+- A2: The repo currently exposes `mix priv_signal.scan`; `mix priv_signal.scan` will be introduced as alias/new task.
 Impact: rollout includes command compatibility and docs migration.
 - A3: Artifact storage remains file-based and no database persistence is introduced.
 Impact: no Ecto migration needed in this phase.
@@ -52,7 +52,7 @@ Impact: multi-node cache coherence is documented but not required at runtime.
 - Mix task surface currently includes `priv_signal.scan`, `score`, `validate`, `init`; no `priv_signal.infer` task exists yet.
 
 ### What I Don’t Know Yet
-- Whether `mix priv_signal.infer` should fully replace `scan` now or coexist long-term.
+- Whether `mix priv_signal.scan` should fully replace `scan` now or coexist long-term.
 - Final default path/name for the node inventory artifact in CI.
 - Final taxonomy governance for `pii.category` and sensitivity extensions.
 - Exact rollout gate policy for enabling enhanced inventory by default in all repos.
@@ -74,7 +74,7 @@ Impact: multi-node cache coherence is documented but not required at runtime.
 - `PrivSignal.Infer.ModuleClassifier` (new): heuristically tags module role (`controller`, `liveview`, `job`, `worker`) with confidence signals.
 - `PrivSignal.Infer.InventoryWriter` (new): writes schema-versioned JSON artifact with sorted nodes.
 - `PrivSignal.Scan.Logger` (existing, updated): continues to detect logging evidence and now emits adapter-compatible candidates.
-- `Mix.Tasks.PrivSignal.Infer` (new): primary CLI command for node inventory.
+- `Mix.Tasks.PrivSignal.Scan` (new): primary CLI command for node inventory.
 - `Mix.Tasks.PrivSignal.Scan` (existing, compatibility mode): retained temporarily; can delegate to infer with legacy output format option.
 
 Interaction flow:
@@ -287,7 +287,7 @@ Property tests:
 - Equivalence under line-shift-only edits (same identity, changed evidence line).
 
 Integration tests:
-- `mix priv_signal.infer` writes schema-versioned node artifact.
+- `mix priv_signal.scan` writes schema-versioned node artifact.
 - `mix priv_signal.scan` compatibility path still works during migration window.
 - strict vs best-effort behavior.
 
@@ -306,7 +306,7 @@ Security tests:
 - global enable after KPI stability.
 
 Migration steps:
-1. Add `Mix.Tasks.PrivSignal.Infer` and keep `scan` intact.
+1. Add `Mix.Tasks.PrivSignal.Scan` as the primary command.
 2. Emit both legacy findings and new nodes behind flag for one release.
 3. Validate node determinism hash and coverage parity vs logging findings.
 4. Switch default artifact to node inventory.
@@ -330,7 +330,7 @@ Mitigation: keep non-blocking classification with confidence and evidence signal
 Mitigation: enforce metadata whitelist and test assertions.
 
 ## 16. Open Questions & Follow-ups
-- Should `mix priv_signal.infer` become the only command immediately, or remain parallel with `scan` for one release?
+- Should `mix priv_signal.scan` become the only command immediately, or remain parallel with `scan` for one release?
 Suggested default: parallel for one minor release.
 - Should artifact include `generated_at` if lockfile diffs are expected to be clean?
 Suggested default: omit from lockfile payload, include in sidecar metadata only.

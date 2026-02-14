@@ -16,7 +16,7 @@ defmodule Mix.Tasks.PrivSignal.Diff do
   Options:
   - `--base REF` (required)
   - `--candidate-ref REF` (optional; mutually exclusive with `--candidate-path`)
-  - `--candidate-path PATH` (optional; defaults to `priv-signal-infer.json`)
+  - `--candidate-path PATH` (optional; defaults to `priv_signal.lockfile.json`)
   - `--artifact-path PATH` (optional; default lockfile path)
   - `--format human|json` (optional; default `human`)
   - `--include-confidence` (optional)
@@ -92,7 +92,7 @@ defmodule Mix.Tasks.PrivSignal.Diff do
   end
 
   defp format_error({:candidate_artifact_not_found, %{source: :workspace, path: path}}) do
-    "candidate workspace artifact not found at #{path}; run mix priv_signal.infer --write-lock and commit"
+    "candidate workspace artifact not found at #{path}; run mix priv_signal.scan and commit the lockfile"
   end
 
   defp format_error(

@@ -1,7 +1,7 @@
 defmodule PrivSignal.Diff.Options do
   @moduledoc false
 
-  @default_artifact_path "priv-signal-infer.json"
+  @default_artifact_path "priv_signal.lockfile.json"
   @default_format :human
 
   @switches [

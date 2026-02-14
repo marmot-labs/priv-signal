@@ -14,7 +14,7 @@ PrivSignal will evolve from a logging-only PII detector into a deterministic PII
 
 - Issue/Epic: `docs/features/enhanced_scan/informal.md`
 - Related docs: `docs/prd.md`, `docs/fdd.md`, `docs/plan.md`
-- Command surface: `mix priv_signal.infer`
+- Command surface: `mix priv_signal.scan`
 
 ## 2. Background & Problem Statement
 
@@ -53,7 +53,7 @@ This work is needed now because Proto Flow inference depends on a high-quality i
 
 **Use Cases / Scenarios**
 
-- A developer runs `mix priv_signal.infer` locally and receives a deterministic inventory JSON that includes logging sink nodes and inferred entrypoint context.
+- A developer runs `mix priv_signal.scan` locally and receives a deterministic inventory JSON that includes logging sink nodes and inferred entrypoint context.
 - A pull request changes logging statements containing `user.email`; CI output shows stable node IDs and evidence changes, enabling targeted review.
 - A privacy engineer compares inventory artifacts across commits to identify new/removed touchpoints without re-running custom analysis scripts.
 
@@ -67,7 +67,7 @@ This work is needed now because Proto Flow inference depends on a high-quality i
 
 **Navigation & Entry Points**
 
-- Primary entry point: `mix priv_signal.infer`.
+- Primary entry point: `mix priv_signal.scan`.
 - Secondary: downstream CI workflows that invoke the command and publish artifacts.
 
 **Accessibility**
@@ -100,7 +100,7 @@ This work is needed now because Proto Flow inference depends on a high-quality i
 | FR-008 | Capture role-specific metadata for `sink` nodes (`logger`, `http`, `telemetry`, `file`), with this phase implementing `logger` detection. | P0 | Engineering |
 | FR-009 | Add module classification scaffolding for `entrypoint` context (`controller`, `liveview`, `job`, `worker`) with confidence score and evidence signals when heuristic. | P1 | Engineering |
 | FR-010 | Emit evidence list for each node with AST-derived references (line, expression kind, matching rule). | P0 | Engineering |
-| FR-011 | Integrate inventory generation into `mix priv_signal.infer` artifact pipeline. | P0 | Engineering |
+| FR-011 | Integrate inventory generation into `mix priv_signal.scan` artifact pipeline. | P0 | Engineering |
 | FR-012 | Ensure generated inventory is treated as machine-managed output (no manual edits required). | P1 | Engineering/DevEx |
 | FR-013 | Add schema/version field to artifact for forward-compatible scanner expansion. | P1 | Engineering |
 | FR-014 | Preserve inference agnosticism by omitting node edges/flow links in output. | P0 | Engineering |
@@ -109,7 +109,7 @@ This work is needed now because Proto Flow inference depends on a high-quality i
 
 - **AC-001 (FR-001, FR-011)**  
   Given a project containing logging statements with known PII fields  
-  When `mix priv_signal.infer` runs successfully  
+  When `mix priv_signal.scan` runs successfully  
   Then output includes `sink` nodes representing those logging touchpoints in the inventory artifact.
 
 - **AC-002 (FR-002, FR-007, FR-010)**  
@@ -156,7 +156,7 @@ This work is needed now because Proto Flow inference depends on a high-quality i
 
 **Performance & Scale**
 
-- `mix priv_signal.infer` inventory phase p50 <= 5s and p95 <= 20s for repositories up to 5,000 Elixir source files on CI-standard runners.
+- `mix priv_signal.scan` inventory phase p50 <= 5s and p95 <= 20s for repositories up to 5,000 Elixir source files on CI-standard runners.
 - Memory target: <= 700 MB RSS p95 during scan on above workload.
 - Throughput target: process >= 250 files/second p50 for parseable Elixir modules.
 - Output writing must stream or batch safely to avoid quadratic behavior on large node sets.
@@ -201,7 +201,7 @@ This work is needed now because Proto Flow inference depends on a high-quality i
 
 **APIs / Contracts**
 
-- CLI contract: `mix priv_signal.infer` writes inventory artifact as part of infer output.
+- CLI contract: `mix priv_signal.scan` writes inventory artifact as part of infer output.
 - Artifact contract sketch:
 
 ```json
@@ -329,7 +329,7 @@ This work is needed now because Proto Flow inference depends on a high-quality i
 
 | Role | Action | Allowed |
 |---|---|---|
-| Developer | Run `mix priv_signal.infer` locally | Yes |
+| Developer | Run `mix priv_signal.scan` locally | Yes |
 | CI service account | Generate inventory artifact on build | Yes |
 | Developer | Manually edit generated inventory as source of truth | Discouraged (generated) |
 | Privacy engineer | Review and diff inventory artifacts | Yes |
@@ -418,7 +418,7 @@ PII policy:
 
 - Unit tests for canonicalization, ID generation, role mapping, and evidence normalization.
 - Property tests for deterministic output under shuffled file traversal and repeated runs.
-- Integration tests for `mix priv_signal.infer` artifact generation.
+- Integration tests for `mix priv_signal.scan` artifact generation.
 
 
 ## 17. Definition of Done
@@ -426,7 +426,7 @@ PII policy:
 - [ ] PRD approved and committed at `docs/features/enhanced_scan/prd.md`
 - [ ] Logging scanner emits canonical `sink` nodes
 - [ ] Deterministic ID generation and stable sorting implemented and tested
-- [ ] `mix priv_signal.infer` emits versioned inventory artifact
+- [ ] `mix priv_signal.scan` emits versioned inventory artifact
 - [ ] Telemetry events, AppSignal dashboards, and alerts are live
 - [ ] Feature flag `enhanced_pii_inventory` wired with environment defaults
 - [ ] QA automated and manual checks completed

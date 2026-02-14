@@ -1,7 +1,7 @@
 # Proto Flow Inference v1 (Single-Scope, Same-Unit) — FDD
 
 ## 1. Executive Summary
-Proto Flow Inference v1 adds a deterministic flow-construction stage on top of the existing infer node inventory so reviewers can see likely PII movement in a single function/entrypoint scope. The feature affects maintainers and privacy reviewers using `mix priv_signal.infer` output in CI and PR diffs. The design keeps current scan and node production intact, then derives `flows` from canonical nodes in a pure, deterministic reducer step. This is intentionally local-only inference: no interprocedural traversal, no LLM, and no policy enforcement. OTP alignment remains command-scoped and failure-isolated by reusing bounded `Task.Supervisor.async_stream_nolink/6` in scan, while flow inference itself stays in-process and side-effect free. Determinism is enforced through canonical grouping keys, stable flow IDs, sorted evidence IDs, and fixed confidence rounding. Performance posture is low risk because flow derivation is O(n log n) over already-emitted nodes and does not reparse AST. Observability expands infer telemetry to include run start/stop, candidate counts, flow counts, and determinism signals suitable for AppSignal dashboards. The primary technical risks are diff churn from identity mistakes and confidence instability from heuristic drift; both are mitigated with explicit identity contracts, fixed score weights, and property tests.
+Proto Flow Inference v1 adds a deterministic flow-construction stage on top of the existing infer node inventory so reviewers can see likely PII movement in a single function/entrypoint scope. The feature affects maintainers and privacy reviewers using `mix priv_signal.scan` output in CI and PR diffs. The design keeps current scan and node production intact, then derives `flows` from canonical nodes in a pure, deterministic reducer step. This is intentionally local-only inference: no interprocedural traversal, no LLM, and no policy enforcement. OTP alignment remains command-scoped and failure-isolated by reusing bounded `Task.Supervisor.async_stream_nolink/6` in scan, while flow inference itself stays in-process and side-effect free. Determinism is enforced through canonical grouping keys, stable flow IDs, sorted evidence IDs, and fixed confidence rounding. Performance posture is low risk because flow derivation is O(n log n) over already-emitted nodes and does not reparse AST. Observability expands infer telemetry to include run start/stop, candidate counts, flow counts, and determinism signals suitable for AppSignal dashboards. The primary technical risks are diff churn from identity mistakes and confidence instability from heuristic drift; both are mitigated with explicit identity contracts, fixed score weights, and property tests.
 
 ## 2. Requirements & Assumptions
 ### Functional Requirements
@@ -26,14 +26,14 @@ Proto Flow Inference v1 adds a deterministic flow-construction stage on top of t
 Impact: if node contract changes, flow identity contract must version-lock against schema.
 - A2: v1 sink coverage is primarily logger-derived nodes from current scanner output.
 Impact: external boundary detection will initially be sparse and conservative.
-- A3: Output artifact naming must preserve existing usage (`priv-signal-infer.json`) while introducing `flows` field.
+- A3: Output artifact naming must preserve existing usage (`priv_signal.lockfile.json`) while introducing `flows` field.
 Impact: PRD mention of `privsignal.json` requires compatibility mapping and docs clarity.
 - A4: No DB persistence is introduced; flows are artifact-only.
 Impact: no Ecto migration needed and no transactional DB concerns.
 
 ## 3. Torus Context Summary
 ### What I Know
-- `Mix.Tasks.PrivSignal.Infer` orchestrates infer and writes JSON via `PrivSignal.Infer.Output.Writer` (`lib/mix/tasks/priv_signal.infer.ex`).
+- `Mix.Tasks.PrivSignal.Scan` orchestrates lockfile generation and writes JSON via `PrivSignal.Infer.Output.Writer` (`lib/mix/tasks/priv_signal.scan.ex`).
 - `PrivSignal.Infer.Runner` currently calls `PrivSignal.Scan.Runner`, converts scan findings to canonical nodes via `PrivSignal.Infer.ScannerAdapter.Logging`, and emits envelope keys `schema_version/tool/git/summary/nodes/errors` (`lib/priv_signal/infer/runner.ex`).
 - `PrivSignal.Scan.Runner` already provides bounded parallel file scanning via `Task.Supervisor.async_stream_nolink/6`, timeout handling, and scan telemetry (`lib/priv_signal/scan/runner.ex`).
 - Deterministic node primitives exist: `NodeNormalizer`, `NodeIdentity`, `Contract.stable_sort_nodes` (`lib/priv_signal/infer/node_normalizer.ex`, `lib/priv_signal/infer/node_identity.ex`, `lib/priv_signal/infer/contract.ex`).
@@ -41,7 +41,7 @@ Impact: no Ecto migration needed and no transactional DB concerns.
 - Config already enforces `pii` plus user-defined `flows` and rejects deprecated `pii_modules` (`lib/priv_signal/config/schema.ex`).
 
 ### What I Don’t Know
-- Whether artifact filename should migrate from `priv-signal-infer.json` to `privsignal.json` or support both indefinitely.
+- Whether artifact filename should migrate from `priv_signal.lockfile.json` to `privsignal.json` or support both indefinitely.
 - Whether downstream consumers expect schema-version bump for adding top-level `flows`.
 - Whether v1 should emit one flow per `(entrypoint,sink,source)` or aggregate multiple sources to one sink.
 - Exact benchmark corpus and CI hardware profile for the p95 regression gate.
@@ -258,7 +258,7 @@ Mitigation: schema version bump + compatibility tests + rollout flag.
 Mitigation: metadata allowlist and explicit ban on IDs/paths in tags.
 
 ## 16. Open Questions & Follow-ups
-- Should output filename remain `priv-signal-infer.json` in v1, or add optional canonical alias `privsignal.json`?
+- Should output filename remain `priv_signal.lockfile.json` in v1, or add optional canonical alias `privsignal.json`?
 Suggested default: keep current filename and add docs note that PRD artifact naming maps to infer JSON output.
 - Should one sink with many source refs emit many flows or one aggregated flow?
 Suggested default: emit one flow per source reference to maximize diff precision.

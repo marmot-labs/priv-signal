@@ -7,7 +7,7 @@ defmodule PrivSignal.Diff.Render.JSONTest do
     report = %{
       metadata: %{
         base_ref: "origin/main",
-        candidate_source: %{type: :workspace, path: "priv-signal-infer.json"},
+        candidate_source: %{type: :workspace, path: "priv_signal.lockfile.json"},
         schema_version_base: "1.2",
         schema_version_candidate: "1.2"
       },
