@@ -31,7 +31,7 @@ Impact: PRD mention of `privsignal.json` requires compatibility mapping and docs
 - A4: No DB persistence is introduced; flows are artifact-only.
 Impact: no Ecto migration needed and no transactional DB concerns.
 
-## 3. Torus Context Summary
+## 3. PrivSignal Context Summary
 ### What I Know
 - `Mix.Tasks.PrivSignal.Scan` orchestrates lockfile generation and writes JSON via `PrivSignal.Infer.Output.Writer` (`lib/mix/tasks/priv_signal.scan.ex`).
 - `PrivSignal.Infer.Runner` currently calls `PrivSignal.Scan.Runner`, converts scan findings to canonical nodes via `PrivSignal.Infer.ScannerAdapter.Logging`, and emits envelope keys `schema_version/tool/git/summary/nodes/errors` (`lib/priv_signal/infer/runner.ex`).

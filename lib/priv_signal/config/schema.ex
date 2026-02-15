@@ -17,7 +17,7 @@ defmodule PrivSignal.Config.Schema do
     errors = validate_pii(map, errors)
     errors = validate_flows(map, errors, mode)
     errors = validate_scanners(map, errors)
-    errors = validate_scoring(map, errors)
+    errors = validate_scoring(map, errors, mode)
 
     if errors == [] do
       {:ok, Config.from_map(map)}
@@ -332,19 +332,42 @@ defmodule PrivSignal.Config.Schema do
     end
   end
 
-  defp validate_scoring(map, errors) do
+  defp validate_scoring(map, errors, mode) do
     case get(map, :scoring) do
       nil ->
         errors
 
       scoring when is_map(scoring) ->
-        errors
-        |> validate_scoring_weights(scoring)
-        |> validate_scoring_thresholds(scoring)
-        |> validate_scoring_llm_interpretation(scoring)
+        if mode == :score do
+          errors
+          |> reject_legacy_scoring_weights(scoring)
+          |> reject_legacy_scoring_thresholds(scoring)
+          |> validate_scoring_llm_interpretation(scoring)
+        else
+          errors
+          |> validate_scoring_weights(scoring)
+          |> validate_scoring_thresholds(scoring)
+          |> validate_scoring_llm_interpretation(scoring)
+        end
 
       _ ->
         ["scoring must be a map" | errors]
+    end
+  end
+
+  defp reject_legacy_scoring_weights(errors, scoring) do
+    if not is_nil(get(scoring, :weights)) do
+      ["scoring.weights is unsupported for score v2" | errors]
+    else
+      errors
+    end
+  end
+
+  defp reject_legacy_scoring_thresholds(errors, scoring) do
+    if not is_nil(get(scoring, :thresholds)) do
+      ["scoring.thresholds is unsupported for score v2" | errors]
+    else
+      errors
     end
   end
 

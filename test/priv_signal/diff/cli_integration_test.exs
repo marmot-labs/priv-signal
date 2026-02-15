@@ -61,8 +61,9 @@ defmodule PrivSignal.Diff.CLIIntegrationTest do
 
       assert File.exists?("tmp/semantic-diff.json")
       decoded = "tmp/semantic-diff.json" |> File.read!() |> Jason.decode!()
-      assert decoded["version"] == "v1"
+      assert decoded["version"] == "v2"
       assert is_map(decoded["summary"])
+      assert is_list(decoded["events"])
     end)
   end
 

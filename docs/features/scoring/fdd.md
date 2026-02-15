@@ -41,7 +41,7 @@ Impact: explicit decoupling avoids hidden behavior coupling during transition.
 - `A5` Optional advisory interpretation remains non-gating and informational.
 Impact: deterministic contract remains stable without model credentials.
 
-## 3. Torus Context Summary
+## 3. PrivSignal Context Summary
 ### What I know from current code/docs
 - Score now lives in `lib/mix/tasks/priv_signal.score.ex` as deterministic diff-driven orchestration (`PrivSignal.Score.Input/Engine/Output`), with optional advisory via `PrivSignal.Score.Advisory`.
 - Diff pipeline exists and is deterministic under `PrivSignal.Diff.*` with `Mix.Tasks.PrivSignal.Diff`.

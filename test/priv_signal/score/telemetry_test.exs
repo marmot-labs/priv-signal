@@ -15,15 +15,13 @@ defmodule PrivSignal.Score.TelemetryTest do
     :telemetry.attach_many("priv_signal-score-test", events, &__MODULE__.handle_event/4, self())
 
     diff = %{
-      summary: %{total: 1},
-      changes: [
+      metadata: %{strict_mode: false},
+      events: [
         %{
-          type: "flow_changed",
-          flow_id: "payments",
-          change: "external_sink_added",
-          severity: "high",
-          rule_id: "R-HIGH-EXTERNAL-SINK-ADDED",
-          details: %{}
+          event_id: "evt:payments",
+          event_type: "destination_changed",
+          boundary_after: "external",
+          sensitivity_after: "high"
         }
       ]
     }
@@ -31,7 +29,7 @@ defmodule PrivSignal.Score.TelemetryTest do
     assert {:ok, report} = Engine.run(diff, PrivSignal.Config.default_scoring())
 
     assert_received {:telemetry, [:priv_signal, :score, :run, :stop], measurements1, metadata1}
-    assert is_integer(measurements1.points)
+    assert is_integer(measurements1.reason_count)
     assert metadata1.score in ["NONE", "LOW", "MEDIUM", "HIGH"]
 
     assert_received {:telemetry, [:priv_signal, :score, :rule_hit], measurements2, metadata2}

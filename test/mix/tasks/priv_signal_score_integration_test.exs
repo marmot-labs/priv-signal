@@ -29,7 +29,7 @@ defmodule Mix.Tasks.PrivSignal.ScoreIntegrationTest do
       payload = File.read!("score.json") |> Jason.decode!()
 
       assert payload["score"] == "HIGH"
-      assert payload["points"] == 9
+      refute Map.has_key?(payload, "points")
       assert payload["llm_interpretation"] == nil
     end)
   end
@@ -51,25 +51,27 @@ defmodule Mix.Tasks.PrivSignal.ScoreIntegrationTest do
 
   defp sample_diff do
     %{
-      version: "v1",
+      version: "v2",
       metadata: %{base_ref: "origin/main"},
-      summary: %{high: 1, medium: 1, low: 0, total: 2},
-      changes: [
+      summary: %{events_high: 1, events_medium: 1, events_low: 0, events_total: 2},
+      events: [
         %{
-          type: "flow_changed",
-          flow_id: "payments",
-          change: "external_sink_added",
-          severity: "high",
-          rule_id: "R-HIGH-EXTERNAL-SINK-ADDED",
+          event_id: "evt:payments",
+          event_type: "destination_changed",
+          event_class: "high",
+          edge_id: "payments",
+          boundary_after: "external",
+          sensitivity_after: "high",
+          rule_id: "R2-HIGH-NEW-EXTERNAL-PII-EGRESS",
           details: %{}
         },
         %{
-          type: "flow_changed",
-          flow_id: "users",
-          change: "pii_fields_expanded",
-          severity: "medium",
-          rule_id: "R-MEDIUM-PII-EXPANDED",
-          details: %{added_fields: ["email"]}
+          event_id: "evt:users",
+          event_type: "sensitivity_changed",
+          event_class: "medium",
+          edge_id: "users",
+          rule_id: "R2-MEDIUM-SENSITIVITY-INCREASE-ON-EXISTING-PATH",
+          details: %{"added_fields" => ["email"]}
         }
       ]
     }

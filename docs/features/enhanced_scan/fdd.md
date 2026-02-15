@@ -41,7 +41,7 @@ Impact: classification errors cannot fail the run; confidence/evidence must be i
 - A5: Single-node CLI/CI runtime remains the default topology.
 Impact: multi-node cache coherence is documented but not required at runtime.
 
-## 3. Torus Context Summary
+## 3. PrivSignal Context Summary
 ### What I Know
 - Scanner execution today is task-parallel and bounded in `PrivSignal.Scan.Runner` using `Task.Supervisor.async_stream_nolink/6` with timeout and `on_timeout: :kill_task`.
 - Scanner currently produces `PrivSignal.Scan.Finding` records with IDs including line numbers and evidence types.

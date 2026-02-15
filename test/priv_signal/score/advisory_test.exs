@@ -5,7 +5,7 @@ defmodule PrivSignal.Score.AdvisoryTest do
 
   test "returns nil when advisory is disabled" do
     diff = %{summary: %{total: 0}}
-    report = %{score: "NONE", points: 0, reasons: []}
+    report = %{score: "NONE", reasons: []}
 
     assert {:ok, nil} =
              Advisory.run(diff, report, %{enabled: false, model: "gpt-5", timeout_ms: 1000})
@@ -13,7 +13,7 @@ defmodule PrivSignal.Score.AdvisoryTest do
 
   test "returns advisory payload when enabled" do
     diff = %{summary: %{total: 1}}
-    report = %{score: "LOW", points: 1, reasons: [%{rule_id: "R-LOW-DEFAULT", points: 1}]}
+    report = %{score: "LOW", reasons: [%{rule_id: "R2-LOW-PRIVACY-RELEVANT-RESIDUAL-CHANGE"}]}
 
     request = fn _opts ->
       {:ok,
@@ -48,7 +48,7 @@ defmodule PrivSignal.Score.AdvisoryTest do
 
   test "returns error when model call fails" do
     diff = %{summary: %{total: 1}}
-    report = %{score: "LOW", points: 1, reasons: []}
+    report = %{score: "LOW", reasons: []}
 
     request = fn _opts -> {:error, :timeout} end
 

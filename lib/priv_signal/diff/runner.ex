@@ -3,7 +3,7 @@ defmodule PrivSignal.Diff.Runner do
 
   require Logger
 
-  alias PrivSignal.Diff.{ArtifactLoader, Normalize, Semantic, Severity}
+  alias PrivSignal.Diff.{ArtifactLoader, ContractV2, Normalize, Semantic, SemanticV2, Severity}
   alias PrivSignal.Diff.Render.{Human, JSON}
 
   def run(options, opts \\ []) when is_map(options) do
@@ -78,17 +78,29 @@ defmodule PrivSignal.Diff.Runner do
       )
 
     annotated_changes = Severity.annotate(semantic_changes)
+    events = SemanticV2.from_changes(annotated_changes)
 
-    PrivSignal.Telemetry.emit(
-      [:priv_signal, :diff, :semantic, :compare],
-      %{duration_ms: duration_ms(start), change_count: length(annotated_changes)},
-      %{ok: true, include_confidence: Map.get(options, :include_confidence?, false)}
-    )
+    with {:ok, validation_warnings} <-
+           ContractV2.validate_events(events, strict: Map.get(options, :strict?, false)) do
+      PrivSignal.Telemetry.emit(
+        [:priv_signal, :diff, :semantic, :compare],
+        %{
+          duration_ms: duration_ms(start),
+          change_count: length(annotated_changes),
+          event_count: length(events)
+        },
+        %{
+          ok: true,
+          include_confidence: Map.get(options, :include_confidence?, false),
+          strict_mode: Map.get(options, :strict?, false)
+        }
+      )
 
-    {:ok, annotated_changes}
+      {:ok, %{changes: annotated_changes, events: events, warnings: validation_warnings}}
+    end
   end
 
-  defp build_report(loaded, changes) do
+  defp build_report(loaded, compared) do
     start = System.monotonic_time()
 
     metadata =
@@ -100,8 +112,9 @@ defmodule PrivSignal.Diff.Runner do
 
     report = %{
       metadata: metadata,
-      changes: changes,
-      warnings: Map.get(loaded, :warnings, [])
+      changes: Map.get(compared, :changes, []),
+      events: Map.get(compared, :events, []),
+      warnings: Map.get(loaded, :warnings, []) ++ Map.get(compared, :warnings, [])
     }
 
     human = Human.render(report)
@@ -109,7 +122,11 @@ defmodule PrivSignal.Diff.Runner do
 
     PrivSignal.Telemetry.emit(
       [:priv_signal, :diff, :render],
-      %{duration_ms: duration_ms(start), change_count: length(changes)},
+      %{
+        duration_ms: duration_ms(start),
+        change_count: length(report.changes),
+        event_count: length(report.events)
+      },
       %{ok: true}
     )
 
@@ -147,10 +164,10 @@ defmodule PrivSignal.Diff.Runner do
       [:priv_signal, :diff, :run, :stop],
       %{
         duration_ms: duration_ms(start),
-        change_count: summary.total,
-        high_count: summary.high,
-        medium_count: summary.medium,
-        low_count: summary.low
+        change_count: summary.events_total,
+        high_count: summary.events_high,
+        medium_count: summary.events_medium,
+        low_count: summary.events_low
       },
       %{
         ok: true,
@@ -162,7 +179,7 @@ defmodule PrivSignal.Diff.Runner do
       }
     )
 
-    Logger.info("[priv_signal] diff run completed changes=#{summary.total}")
+    Logger.info("[priv_signal] diff run completed events=#{summary.events_total}")
   end
 
   defp emit_run_error(start, reason, options) do

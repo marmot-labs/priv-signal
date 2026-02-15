@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Rubric V2 Categorical Scoring (Hard Cutover)
+
+- `mix priv_signal.diff` now emits `version: "v2"` with deterministic `events[]` and `summary.events_*` counters.
+- `mix priv_signal.score` now accepts only diff `version: "v2"` with `events[]`.
+- `mix priv_signal.score` now emits `version: "v2"` and does not emit `points`.
+- Added deterministic rubric classifier (`PrivSignal.Score.RubricV2`) with strict decision order:
+  - empty => `NONE`
+  - any high => `HIGH`
+  - else any medium => `MEDIUM`
+  - else non-empty => `LOW`
+- Legacy score runtime paths and legacy score config keys (`scoring.weights`, `scoring.thresholds` in score mode) are now rejected.
+- Added rollout guidance in `docs/features/v2_rubric/rollout_runbook.md`.
+
 ### Deterministic Diff-Based Scoring (V1)
 
 - Reworked `mix priv_signal.score` to consume semantic diff JSON artifacts via `--diff` and emit deterministic score JSON output.

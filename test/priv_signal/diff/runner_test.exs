@@ -27,8 +27,8 @@ defmodule PrivSignal.Diff.RunnerTest do
     assert {:ok, result} = Runner.run(options, git_runner: git_runner, file_reader: file_reader)
 
     assert is_binary(result.human)
-    assert result.json.summary.total == 1
-    assert result.json.summary.high == 1
+    assert result.json.summary.events_total == 1
+    assert result.json.summary.events_high == 1
     assert result.report.metadata.base_ref == "origin/main"
   end
 
@@ -93,7 +93,7 @@ defmodule PrivSignal.Diff.RunnerTest do
 
     assert {:ok, result} = Runner.run(options, git_runner: git_runner, file_reader: file_reader)
 
-    assert Enum.any?(result.json.changes, &(&1.type == "confidence_changed"))
-    assert Enum.any?(result.json.changes, &(&1.rule_id == "R-LOW-CONFIDENCE-ONLY"))
+    assert Enum.any?(result.json.events, &(&1.event_type == "edge_updated"))
+    assert Enum.any?(result.json.events, &(&1.rule_id == "R-LOW-CONFIDENCE-ONLY"))
   end
 end

@@ -3,142 +3,90 @@ defmodule PrivSignal.Score.Engine do
 
   require Logger
 
-  alias PrivSignal.Score.{Buckets, Rules}
+  alias PrivSignal.Score.RubricV2
 
   def run(diff, scoring_config) when is_map(diff) and is_map(scoring_config) do
+    _ = scoring_config
+    run_v2(diff)
+  end
+
+  defp run_v2(diff) do
     start = System.monotonic_time()
-    Logger.debug("[priv_signal] score engine started")
+    Logger.debug("[priv_signal] score_engine_start version=v2")
 
-    weights =
-      case Map.get(scoring_config, :weights, %{}) do
-        %{values: values} when is_map(values) -> values
-        values when is_map(values) -> values
-        _ -> Rules.default_weights()
-      end
+    strict? = diff |> Map.get(:metadata, %{}) |> Map.get(:strict_mode, false)
 
-    thresholds =
-      case Map.get(scoring_config, :thresholds, %{}) do
-        %{low_max: low_max, medium_max: medium_max, high_min: high_min} ->
-          %{low_max: low_max, medium_max: medium_max, high_min: high_min}
+    with {:ok, events} <- require_events(diff),
+         {:ok, classified_events, warnings} <- RubricV2.classify_events(events, strict: strict?) do
+      summary = build_v2_summary(classified_events, warnings)
+      score = decide_v2_score(summary)
+      reasons = v2_reasons(classified_events, score)
+      emit_rule_hits(reasons)
 
-        values when is_map(values) ->
-          values
+      duration_ms = duration_ms(start)
 
-        _ ->
-          Buckets.default_thresholds()
-      end
+      PrivSignal.Telemetry.emit(
+        [:priv_signal, :score, :run, :stop],
+        %{duration_ms: duration_ms, reason_count: length(reasons)},
+        %{ok: true, score: score, version: "v2", strict_mode: strict?}
+      )
 
-    {points, reasons, summary} = score_changes(Map.get(diff, :changes, []), weights)
+      Logger.info(
+        "[priv_signal] score_decision version=v2 score=#{score} events_total=#{summary.events_total} events_high=#{summary.events_high} events_medium=#{summary.events_medium} events_low=#{summary.events_low} reasons_count=#{length(reasons)}"
+      )
 
-    score = Buckets.classify(points, summary.relevant_changes, reasons, thresholds)
-
-    sorted_reasons =
-      Enum.sort_by(reasons, fn reason ->
-        {Buckets.severity_rank(reason.severity), reason.rule_id, reason.change_id}
-      end)
-
-    emit_rule_hits(sorted_reasons)
-
-    report = %{
-      score: score,
-      points: points,
-      summary:
-        Map.take(summary, [
-          :nodes_added,
-          :external_nodes_added,
-          :high_sensitivity_changes,
-          :transforms_removed,
-          :new_external_domains,
-          :ignored_changes,
-          :relevant_changes,
-          :total_changes
-        ]),
-      reasons: Enum.map(sorted_reasons, &Map.take(&1, [:rule_id, :points, :change_id]))
-    }
-
-    duration_ms = duration_ms(start)
-
-    PrivSignal.Telemetry.emit(
-      [:priv_signal, :score, :run, :stop],
-      %{duration_ms: duration_ms, points: points, reason_count: length(sorted_reasons)},
-      %{ok: true, score: score}
-    )
-
-    Logger.info("[priv_signal] score engine completed score=#{score} points=#{points}")
-
-    {:ok, report}
-  end
-
-  defp score_changes(changes, weights) do
-    initial_summary = %{
-      nodes_added: 0,
-      external_nodes_added: 0,
-      high_sensitivity_changes: 0,
-      transforms_removed: 0,
-      new_external_domains: 0,
-      ignored_changes: 0,
-      relevant_changes: 0,
-      total_changes: length(changes)
-    }
-
-    Enum.reduce(changes, {0, [], initial_summary}, fn change,
-                                                      {points_acc, reasons_acc, summary_acc} ->
-      updated_summary = update_summary(summary_acc, change)
-
-      case Rules.evaluate(change, weights) do
-        {:ok, reason} ->
-          {points_acc + reason.points, [reason | reasons_acc],
-           Map.update!(updated_summary, :relevant_changes, &(&1 + 1))}
-
-        :ignore ->
-          {points_acc, reasons_acc, Map.update!(updated_summary, :ignored_changes, &(&1 + 1))}
-      end
-    end)
-  end
-
-  defp update_summary(summary, %{type: "flow_added", details: details}) do
-    summary = Map.update!(summary, :nodes_added, &(&1 + 1))
-
-    if details_value(details, :boundary) == "external" do
-      Map.update!(summary, :external_nodes_added, &(&1 + 1))
+      {:ok, %{score: score, summary: summary, reasons: reasons}}
     else
-      summary
+      {:error, reason} ->
+        Logger.error(
+          "[priv_signal] score_contract_error version=v2 reason=#{sanitize_reason(reason)}"
+        )
+
+        {:error, reason}
     end
   end
 
-  defp update_summary(summary, %{change: "external_sink_added"}) do
-    Map.update!(summary, :external_nodes_added, &(&1 + 1))
-  end
-
-  defp update_summary(summary, %{change: "pii_fields_expanded", details: details}) do
-    added_fields = details_value(details, :added_fields) |> List.wrap()
-
-    if high_sensitivity_fields?(added_fields) do
-      Map.update!(summary, :high_sensitivity_changes, &(&1 + 1))
-    else
-      summary
+  defp require_events(diff) do
+    case Map.get(diff, :events) do
+      events when is_list(events) -> {:ok, events}
+      _ -> {:error, {:unsupported_score_input, %{required: "diff.version=v2 with events[]"}}}
     end
   end
 
-  defp update_summary(summary, _), do: summary
-
-  defp high_sensitivity_fields?(fields) do
-    Enum.any?(fields, fn field ->
-      normalized =
-        field
-        |> to_string()
-        |> String.trim()
-        |> String.downcase()
-
-      normalized in ["ssn", "dob", "date_of_birth", "passport_number"]
-    end)
+  defp build_v2_summary(events, warnings) do
+    %{
+      events_total: length(events),
+      events_high: Enum.count(events, &(&1.event_class == "high")),
+      events_medium: Enum.count(events, &(&1.event_class == "medium")),
+      events_low: Enum.count(events, &(&1.event_class == "low")),
+      unknown_events: Enum.count(events, &Map.get(&1, :unknown_event_type, false)),
+      warnings_count: length(warnings)
+    }
   end
 
-  defp details_value(details, key) when is_map(details) do
-    Map.get(details, key) || Map.get(details, Atom.to_string(key))
+  defp decide_v2_score(summary) do
+    cond do
+      summary.events_total == 0 -> "NONE"
+      summary.events_high > 0 -> "HIGH"
+      summary.events_medium > 0 -> "MEDIUM"
+      true -> "LOW"
+    end
   end
 
-  defp details_value(_details, _key), do: nil
+  defp v2_reasons(events, score) do
+    target_class =
+      case score do
+        "HIGH" -> "high"
+        "MEDIUM" -> "medium"
+        "LOW" -> "low"
+        _ -> nil
+      end
+
+    events
+    |> Enum.filter(fn event -> target_class != nil and event.event_class == target_class end)
+    |> Enum.map(&Map.take(&1, [:event_id, :rule_id]))
+    |> Enum.sort_by(fn reason -> {reason.rule_id || "", reason.event_id || ""} end)
+  end
 
   defp emit_rule_hits(reasons) do
     reasons
@@ -151,6 +99,11 @@ defmodule PrivSignal.Score.Engine do
       )
     end)
   end
+
+  defp sanitize_reason({:unknown_event_type, _}), do: "unknown_event_type"
+  defp sanitize_reason({:unsupported_score_input, _}), do: "unsupported_score_input"
+  defp sanitize_reason({:invalid_event, _}), do: "invalid_event"
+  defp sanitize_reason(_), do: "contract_error"
 
   defp duration_ms(start) do
     System.monotonic_time()

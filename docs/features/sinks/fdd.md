@@ -32,7 +32,7 @@ Phase 4 expands PrivSignal from logging-centric detection to five deterministic 
 - Assumption: boundary inference for HTTP hosts can be static-literal first in Phase 4.
 - Impact: dynamic URL expressions default to external with reduced confidence.
 
-## 3. Torus Context Summary
+## 3. PrivSignal Context Summary
 ### What I know
 - Entry point: `Mix.Tasks.PrivSignal.Scan` currently loads config then calls `PrivSignal.Infer.Runner.run/2` and writes infer JSON/Markdown.
 - Scan runtime: `PrivSignal.Scan.Runner` already supports bounded concurrency, timeout handling, strict mode, and telemetry emission.

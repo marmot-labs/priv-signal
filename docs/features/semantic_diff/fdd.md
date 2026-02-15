@@ -38,7 +38,7 @@ Impact: interface surface is simpler and test matrix remains narrow.
 - A5: Observability requirements are fully aligned across PRD and FDD; diff telemetry is required for rollout safety.
 Impact: implementation can proceed without spec conflict.
 
-## 3. Torus Context Summary
+## 3. PrivSignal Context Summary
 ### What I Know
 - PrivSignal is a Mix-task CLI with command entrypoints in `lib/mix/tasks/*`.
 - `mix priv_signal.scan` emits deterministic lockfile JSON (`priv_signal.lockfile.json`) with `nodes` and `flows` via `PrivSignal.Infer.Runner` and `PrivSignal.Infer.Output.JSON`.

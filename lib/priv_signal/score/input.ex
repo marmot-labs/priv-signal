@@ -1,7 +1,7 @@
 defmodule PrivSignal.Score.Input do
   @moduledoc false
 
-  @supported_versions MapSet.new(["v1"])
+  @supported_versions MapSet.new(["v2"])
 
   def load_diff_json(path) when is_binary(path) do
     with {:ok, raw} <- File.read(path),
@@ -22,7 +22,7 @@ defmodule PrivSignal.Score.Input do
 
   defp validate(decoded) when is_map(decoded) do
     with {:ok, _version} <- validate_version(decoded),
-         :ok <- validate_changes(decoded) do
+         :ok <- validate_events(decoded) do
       :ok
     end
   end
@@ -46,81 +46,118 @@ defmodule PrivSignal.Score.Input do
     end
   end
 
-  defp validate_changes(decoded) do
-    case get(decoded, :changes) do
-      changes when is_list(changes) ->
-        changes
+  defp validate_events(decoded) do
+    case get(decoded, :events) do
+      events when is_list(events) ->
+        events
         |> Enum.with_index()
-        |> Enum.reduce_while(:ok, fn {change, idx}, :ok ->
-          case validate_change(change) do
+        |> Enum.reduce_while(:ok, fn {event, idx}, :ok ->
+          case validate_event(event) do
             :ok ->
               {:cont, :ok}
 
             {:error, reason} ->
-              {:halt, {:error, {:invalid_change, %{index: idx, reason: reason}}}}
+              {:halt, {:error, {:invalid_event, %{index: idx, reason: reason}}}}
           end
         end)
 
       _ ->
-        {:error, {:missing_required_field, "changes"}}
+        {:error, {:missing_required_field, "events"}}
     end
   end
 
-  defp validate_change(change) when is_map(change) do
-    with :ok <- require_binary(change, :type),
-         :ok <- require_binary(change, :change),
-         :ok <- require_binary(change, :flow_id),
-         :ok <- validate_details(change) do
+  defp validate_event(event) when is_map(event) do
+    with :ok <- require_binary(event, :event_id),
+         :ok <- require_binary(event, :event_type),
+         :ok <- require_event_class(event),
+         :ok <- require_node_or_edge(event),
+         :ok <- validate_details(event) do
       :ok
     end
   end
 
-  defp validate_change(_), do: {:error, "change must be an object"}
+  defp validate_event(_), do: {:error, "event must be an object"}
 
-  defp validate_details(change) do
-    case get(change, :details) do
+  defp require_event_class(event) do
+    case get(event, :event_class) do
+      class when class in ["high", "medium", "low"] -> :ok
+      _ -> {:error, "event.event_class must be one of high|medium|low"}
+    end
+  end
+
+  defp require_node_or_edge(event) do
+    node_id = get(event, :node_id)
+    edge_id = get(event, :edge_id)
+
+    if present?(node_id) or present?(edge_id) do
+      :ok
+    else
+      {:error, "event must include node_id or edge_id"}
+    end
+  end
+
+  defp present?(value) when is_binary(value), do: String.trim(value) != ""
+  defp present?(_), do: false
+
+  defp validate_details(event) do
+    case get(event, :details) do
       nil -> :ok
       details when is_map(details) -> :ok
-      _ -> {:error, "change.details must be an object when present"}
+      _ -> {:error, "event.details must be an object when present"}
     end
   end
 
   defp require_binary(map, key) do
     case get(map, key) do
       value when is_binary(value) and value != "" -> :ok
-      _ -> {:error, "change.#{key} must be a non-empty string"}
+      _ -> {:error, "event.#{key} must be a non-empty string"}
     end
   end
 
   defp normalize(decoded) do
-    changes =
+    events =
       decoded
-      |> get(:changes)
-      |> Enum.map(&normalize_change/1)
+      |> get(:events)
+      |> Enum.map(&normalize_event/1)
       |> Enum.sort_by(&sort_key/1)
 
     %{
       version: get(decoded, :version),
       metadata: get(decoded, :metadata) || %{},
       summary: get(decoded, :summary) || %{},
-      changes: changes
+      events: events
     }
   end
 
-  defp normalize_change(change) do
+  defp normalize_event(event) do
     %{
-      type: get(change, :type),
-      flow_id: get(change, :flow_id),
-      change: get(change, :change),
-      severity: get(change, :severity),
-      rule_id: get(change, :rule_id),
-      details: get(change, :details) || %{}
+      event_id: get(event, :event_id),
+      event_type: get(event, :event_type),
+      event_class: get(event, :event_class),
+      rule_id: get(event, :rule_id),
+      node_id: get(event, :node_id),
+      edge_id: get(event, :edge_id),
+      boundary_before: get(event, :boundary_before),
+      boundary_after: get(event, :boundary_after),
+      sensitivity_before: get(event, :sensitivity_before),
+      sensitivity_after: get(event, :sensitivity_after),
+      entrypoint_kind: get(event, :entrypoint_kind),
+      destination: get(event, :destination) || %{},
+      pii_delta: get(event, :pii_delta) || %{},
+      transform_delta: get(event, :transform_delta) || %{},
+      details: get(event, :details) || %{}
     }
   end
 
-  defp sort_key(change) do
-    {change.type, change.flow_id, change.change, stable_map_key(change.details)}
+  defp sort_key(event) do
+    {event_class_rank(event.event_class), event.event_type, event.event_id, event.node_id || "",
+     event.edge_id || "", stable_map_key(event.details)}
   end
+
+  defp event_class_rank("high"), do: 0
+  defp event_class_rank("medium"), do: 1
+  defp event_class_rank("low"), do: 2
+  defp event_class_rank(_), do: 3
 
   defp stable_map_key(map) when is_map(map) do
     map

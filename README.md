@@ -80,6 +80,19 @@ mix priv_signal.validate
 
 `mix priv_signal.score` no longer runs flow validation; it scores a semantic diff artifact produced by `mix priv_signal.diff`.
 
+## Rubric V2 Migration
+
+Score contracts are now v2-only:
+
+- Input artifact for `mix priv_signal.score` must be `version: "v2"` with `events[]` (not `changes[]`).
+- Output artifact is `version: "v2"` and no longer includes `points`.
+
+If you have downstream parsers or CI checks that read `points`, migrate them to consume:
+
+- `score` (`NONE|LOW|MEDIUM|HIGH`)
+- `summary.events_total`, `summary.events_high`, `summary.events_medium`, `summary.events_low`
+- `reasons[]` (`event_id`, `rule_id`)
+
 ## Scan Lockfile
 
 Run deterministic static scanning to generate a node inventory artifact:

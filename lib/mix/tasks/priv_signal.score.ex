@@ -24,12 +24,15 @@ defmodule Mix.Tasks.PrivSignal.Score do
              json <- Score.Output.JSON.render(report, llm_interpretation),
              {:ok, output_path} <- Score.Output.Writer.write(json, output: options.output) do
           unless options.quiet do
-            Mix.shell().info("score=#{report.score} points=#{report.points}")
+            Mix.shell().info("score=#{report.score}")
             Mix.shell().info("score output written: #{output_path}")
           end
         else
           {:error, reason} ->
-            Logger.error("[priv_signal] score failed reason=#{inspect(reason)}")
+            Logger.error(
+              "[priv_signal] score_failed version=v2 reason=#{sanitize_reason(reason)}"
+            )
+
             Mix.shell().error(format_error(reason))
 
             PrivSignal.Telemetry.emit(
@@ -107,8 +110,14 @@ defmodule Mix.Tasks.PrivSignal.Score do
 
   defp format_error({:missing_required_field, field}), do: "missing required field: #{field}"
 
-  defp format_error({:invalid_change, %{index: idx, reason: reason}}),
-    do: "invalid change at index #{idx}: #{reason}"
+  defp format_error({:invalid_event, %{index: idx, reason: reason}}),
+    do: "invalid event at index #{idx}: #{reason}"
+
+  defp format_error({:unsupported_score_input, %{required: required}}),
+    do: "unsupported score input contract; required: #{required}"
+
+  defp format_error({:unknown_event_type, _}),
+    do: "unknown event_type in strict mode; score input contract rejected"
 
   defp format_error({:invalid_diff_contract, reason}),
     do: "invalid diff contract: #{inspect(reason)}"
@@ -116,13 +125,20 @@ defmodule Mix.Tasks.PrivSignal.Score do
   defp format_error(reason) when is_binary(reason), do: reason
   defp format_error(reason), do: inspect(reason)
 
+  defp sanitize_reason({:unsupported_diff_version, _}), do: "unsupported_diff_version"
+  defp sanitize_reason({:unsupported_score_input, _}), do: "unsupported_score_input"
+  defp sanitize_reason({:invalid_event, _}), do: "invalid_event"
+  defp sanitize_reason({:missing_required_field, _}), do: "missing_required_field"
+  defp sanitize_reason({:config_load_failed, _}), do: "config_load_failed"
+  defp sanitize_reason(_), do: "score_error"
+
   defp usage do
     """
     Usage:
       mix priv_signal.score --diff <path> [options]
 
     Options:
-      --diff <path>       Path to semantic diff JSON artifact (required)
+      --diff <path>       Path to semantic diff JSON artifact v2 (required)
       --output <path>     Output score JSON path (default: priv_signal_score.json)
       --quiet             Suppress CLI summary output
       --help              Show this help

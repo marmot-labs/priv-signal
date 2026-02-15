@@ -6,16 +6,15 @@ defmodule PrivSignal.Score.Output.JSONTest do
   test "renders stable score json contract" do
     report = %{
       score: "MEDIUM",
-      points: 6,
-      summary: %{nodes_added: 1},
-      reasons: [%{rule_id: "R-1", points: 6, change_id: "flow:abc:flow_added"}]
+      summary: %{events_total: 1},
+      reasons: [%{rule_id: "R2-1", event_id: "evt:abc"}]
     }
 
     rendered = JSON.render(report, %{summary: "advisory"})
 
-    assert rendered.version == "v1"
+    assert rendered.version == "v2"
     assert rendered.score == "MEDIUM"
-    assert rendered.points == 6
+    refute Map.has_key?(rendered, :points)
     assert rendered.llm_interpretation.summary == "advisory"
   end
 end

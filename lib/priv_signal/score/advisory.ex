@@ -76,7 +76,6 @@ defmodule PrivSignal.Score.Advisory do
           Jason.encode!(%{
             diff_summary: Map.get(diff, :summary, %{}),
             score: Map.get(report, :score),
-            points: Map.get(report, :points),
             reasons: Map.get(report, :reasons, [])
           })
       }

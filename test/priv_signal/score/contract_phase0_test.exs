@@ -3,29 +3,32 @@ defmodule PrivSignal.Score.ContractPhase0Test do
 
   alias PrivSignal.Score.{Engine, Input, Output}
 
-  test "input contract requires v1 and canonical change fields" do
+  test "input contract requires v2 and canonical event fields" do
     with_tmp_file(fn path ->
-      File.write!(path, Jason.encode!(%{version: "v1", changes: []}))
-      assert {:ok, %{version: "v1", changes: []}} = Input.load_diff_json(path)
+      File.write!(path, Jason.encode!(%{version: "v2", events: []}))
+      assert {:ok, %{version: "v2", events: []}} = Input.load_diff_json(path)
 
-      File.write!(path, Jason.encode!(%{changes: []}))
+      File.write!(path, Jason.encode!(%{events: []}))
       assert {:error, {:missing_required_field, "version"}} = Input.load_diff_json(path)
 
-      File.write!(path, Jason.encode!(%{version: "v1", changes: [%{"type" => "flow_added"}]}))
+      File.write!(
+        path,
+        Jason.encode!(%{version: "v2", events: [%{"event_type" => "edge_added"}]})
+      )
 
-      assert {:error, {:invalid_change, %{index: 0, reason: _}}} = Input.load_diff_json(path)
+      assert {:error, {:invalid_event, %{index: 0, reason: _}}} = Input.load_diff_json(path)
     end)
   end
 
   test "output contract includes deterministic score fields" do
     diff = %{
-      changes: [
+      events: [
         %{
-          type: "flow_changed",
-          flow_id: "payments",
-          change: "external_sink_added",
-          severity: "high",
-          rule_id: "R-HIGH-EXTERNAL-SINK-ADDED",
+          event_id: "evt:payments",
+          event_type: "destination_changed",
+          event_class: "high",
+          edge_id: "payments",
+          rule_id: "R2-HIGH-NEW-EXTERNAL-PII-EGRESS",
           details: %{}
         }
       ]
@@ -35,9 +38,9 @@ defmodule PrivSignal.Score.ContractPhase0Test do
 
     rendered = Output.JSON.render(report)
 
-    assert rendered.version == "v1"
+    assert rendered.version == "v2"
     assert rendered.score in ["NONE", "LOW", "MEDIUM", "HIGH"]
-    assert is_integer(rendered.points)
+    refute Map.has_key?(rendered, :points)
     assert is_map(rendered.summary)
     assert is_list(rendered.reasons)
     assert Map.has_key?(rendered, :llm_interpretation)

@@ -1,21 +1,20 @@
-defmodule PrivSignal.Score.ConfigOverridesTest do
+defmodule PrivSignal.ConfigSchemaScoreLegacyRejectionTest do
   use ExUnit.Case, async: true
 
   alias PrivSignal.Config.Schema
 
-  test "score mode rejects legacy scoring overrides in config schema" do
+  test "rejects legacy scoring.weights and scoring.thresholds in score mode" do
     map = %{
       "version" => 1,
       "pii" => [
         %{
-          "module" => "MyApp.User",
+          "module" => "Demo.User",
           "fields" => [%{"name" => "email", "category" => "contact", "sensitivity" => "medium"}]
         }
       ],
-      "flows" => [],
       "scoring" => %{
-        "weights" => %{"R-HIGH-EXTERNAL-SINK-ADDED" => 2},
-        "thresholds" => %{"low_max" => 3, "medium_max" => 5, "high_min" => 6}
+        "weights" => %{"R-HIGH-EXTERNAL-SINK-ADDED" => 8},
+        "thresholds" => %{"low_max" => 2, "medium_max" => 4, "high_min" => 6}
       }
     }
 

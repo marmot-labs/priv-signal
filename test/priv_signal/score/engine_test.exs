@@ -5,22 +5,20 @@ defmodule PrivSignal.Score.EngineTest do
 
   test "produces deterministic score report" do
     diff = %{
-      changes: [
+      metadata: %{strict_mode: false},
+      events: [
         %{
-          type: "flow_changed",
-          flow_id: "users",
-          change: "pii_fields_expanded",
-          severity: "medium",
-          rule_id: "R-MEDIUM-PII-EXPANDED",
-          details: %{added_fields: ["email"]}
+          event_id: "evt:users",
+          event_type: "boundary_changed",
+          boundary_before: "internal",
+          boundary_after: "external",
+          sensitivity_after: "medium"
         },
         %{
-          type: "flow_changed",
-          flow_id: "payments",
-          change: "external_sink_added",
-          severity: "high",
-          rule_id: "R-HIGH-EXTERNAL-SINK-ADDED",
-          details: %{}
+          event_id: "evt:payments",
+          event_type: "destination_changed",
+          boundary_after: "external",
+          sensitivity_after: "high"
         }
       ]
     }
@@ -29,8 +27,8 @@ defmodule PrivSignal.Score.EngineTest do
 
     assert {:ok, report} = Engine.run(diff, config)
     assert report.score == "HIGH"
-    assert report.points == 9
-    assert report.summary.relevant_changes == 2
-    assert length(report.reasons) == 2
+    assert report.summary.events_total == 2
+    assert report.summary.events_high == 1
+    assert length(report.reasons) == 1
   end
 end
