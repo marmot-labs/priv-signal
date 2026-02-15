@@ -11,6 +11,10 @@ defmodule PrivSignal.Config.LoaderTest do
     assert config.version == 1
     assert length(config.pii) == 2
     assert length(config.flows) == 1
+    assert is_struct(config.scanners, PrivSignal.Config.Scanners)
+    assert config.scanners.logging.enabled
+    assert config.scanners.http.enabled
+    assert config.scanners.database.enabled
   end
 
   defp sample_yaml do

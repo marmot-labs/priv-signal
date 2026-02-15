@@ -30,6 +30,28 @@ pii:
         category: identifier
         sensitivity: low
 
+scanners:
+  logging:
+    enabled: true
+    additional_modules: []
+  http:
+    enabled: true
+    additional_modules: []
+    internal_domains: []
+    external_domains: []
+  controller:
+    enabled: true
+    additional_render_functions: []
+  telemetry:
+    enabled: true
+    additional_modules: []
+  database:
+    enabled: true
+    repo_modules: []
+  liveview:
+    enabled: true
+    additional_modules: []
+
 flows:
   - id: xapi_export
     description: "User activity exported as xAPI statements"
@@ -86,6 +108,25 @@ Scan lockfile schema notes:
 - Proto flow keys are emitted under top-level `flows` when `PRIV_SIGNAL_INFER_PROTO_FLOWS_V1` is enabled (default).
 - `schema_version` governs compatibility; any breaking key rename will bump `schema_version`.
 - `code_context` contains module/function/file path; line evidence belongs in `evidence`.
+
+Phase 4 scanner categories (enabled via `scanners.*.enabled`):
+
+- `logging`: logging sinks (`Logger`, `:logger`, and configured wrapper modules).
+- `http`: outbound HTTP client calls (`Req`, `Finch`, `Tesla`, etc.) with boundary classification.
+- `controller`: response exposure APIs (`json`, `render`, `send_resp`, etc.).
+- `telemetry`: telemetry and analytics exports (`:telemetry.execute`, AppSignal/Sentry/OpenTelemetry patterns).
+- `database`: `Repo` reads (`database_read` sources) and writes (`database_write` sinks).
+- `liveview`: UI exposure patterns (`assign`, `push_event`, `render`) in LiveView modules.
+
+Category overrides:
+
+- `scanners.logging.additional_modules`: custom logging wrapper modules.
+- `scanners.http.additional_modules`: custom HTTP wrapper modules.
+- `scanners.http.internal_domains` / `scanners.http.external_domains`: host boundary overrides.
+- `scanners.controller.additional_render_functions`: custom response render helpers.
+- `scanners.telemetry.additional_modules`: custom analytics/observability wrappers.
+- `scanners.database.repo_modules`: explicit repo modules to classify as DB access.
+- `scanners.liveview.additional_modules`: custom LiveView module roots.
 
 Proto-flow feature flag:
 

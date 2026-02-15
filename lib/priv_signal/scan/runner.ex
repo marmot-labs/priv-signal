@@ -2,7 +2,15 @@ defmodule PrivSignal.Scan.Runner do
   @moduledoc false
 
   alias PrivSignal.Scan.{Classifier, Inventory, Source}
-  alias PrivSignal.Scan.Logger, as: ScanLogger
+  alias PrivSignal.Scan.Scanner
+  alias PrivSignal.Scan.Scanner.Cache, as: ScannerCache
+  alias PrivSignal.Scan.Scanner.Controller, as: ControllerScanner
+  alias PrivSignal.Scan.Scanner.Database, as: DatabaseScanner
+  alias PrivSignal.Scan.Scanner.HTTP, as: HTTPScanner
+  alias PrivSignal.Scan.Scanner.LiveView, as: LiveViewScanner
+  alias PrivSignal.Scan.Scanner.Logging, as: LoggingScanner
+  alias PrivSignal.Scan.Scanner.Telemetry, as: TelemetryScanner
+  alias PrivSignal.Validate.AST
   require Logger
 
   @scanner_version "1"
@@ -13,7 +21,17 @@ defmodule PrivSignal.Scan.Runner do
     strict? = Keyword.get(opts, :strict, false)
     timeout = resolve_timeout_ms(opts)
     max_concurrency = resolve_max_concurrency(opts)
-    scan_fun = Keyword.get(opts, :scan_fun, &ScanLogger.scan_file/2)
+
+    opts =
+      Keyword.put_new(
+        opts,
+        :scanner_config,
+        config.scanners || PrivSignal.Config.default_scanners()
+      )
+
+    scan_fun = Keyword.get(opts, :scan_fun)
+    parse_fun = Keyword.get(opts, :parse_fun, &AST.parse_file/1)
+    scanner_modules = resolve_scanner_modules(config, opts)
     source_opts = Keyword.get(opts, :source, [])
 
     Logger.debug(
@@ -32,7 +50,9 @@ defmodule PrivSignal.Scan.Runner do
         Task.Supervisor.async_stream_nolink(
           supervisor,
           files,
-          fn file -> scan_file(file, inventory, scan_fun) end,
+          fn file ->
+            scan_file(file, inventory, scan_fun, parse_fun, scanner_modules, opts)
+          end,
           max_concurrency: max_concurrency,
           timeout: timeout,
           on_timeout: :kill_task,
@@ -76,10 +96,96 @@ defmodule PrivSignal.Scan.Runner do
     end
   end
 
-  defp scan_file(file, inventory, scan_fun) do
-    case scan_fun.(file, inventory) do
-      {:ok, findings} -> {:ok, file, findings}
-      {:error, reason} -> {:error, file, reason}
+  defp scan_file(file, inventory, scan_fun, parse_fun, scanner_modules, opts) do
+    if is_function(scan_fun, 2) do
+      case scan_fun.(file, inventory) do
+        {:ok, findings} -> {:ok, file, findings}
+        {:error, reason} -> {:error, file, reason}
+      end
+    else
+      case parse_fun.(file) do
+        {:ok, ast} ->
+          file_ctx = %{path: file, cache: ScannerCache.build(ast, file)}
+
+          candidates =
+            scan_with_modules(
+              ast,
+              file_ctx,
+              inventory,
+              scanner_modules,
+              config_scanner_opts(opts)
+            )
+
+          {:ok, file, candidates}
+
+        {:error, reason} ->
+          {:error, file, reason}
+      end
+    end
+  end
+
+  defp scan_with_modules(ast, file_ctx, inventory, scanner_modules, opts) do
+    scanner_opts = Keyword.put(opts, :file_cache, file_ctx.cache)
+
+    scanner_modules
+    |> Enum.flat_map(fn scanner ->
+      category = scanner_category(scanner)
+
+      {duration_ms, findings} =
+        timed(fn ->
+          scanner.scan_ast(ast, file_ctx, inventory, scanner_opts)
+        end)
+
+      emit_category_telemetry(category, duration_ms, findings)
+      findings
+    end)
+  end
+
+  defp config_scanner_opts(opts) do
+    opts
+  end
+
+  defp resolve_scanner_modules(config, opts) do
+    case Keyword.get(opts, :scanner_modules) do
+      nil ->
+        config
+        |> scanner_modules_from_config()
+        |> Enum.filter(&Scanner.valid_module?/1)
+        |> case do
+          [] -> [LoggingScanner]
+          modules -> modules
+        end
+
+      override ->
+        override
+        |> List.wrap()
+        |> Enum.filter(&Scanner.valid_module?/1)
+        |> case do
+          [] -> [LoggingScanner]
+          modules -> modules
+        end
+    end
+  end
+
+  defp scanner_modules_from_config(config) do
+    scanners = Map.get(config, :scanners) || PrivSignal.Config.default_scanners()
+
+    []
+    |> maybe_add_scanner(scanners.logging, LoggingScanner)
+    |> maybe_add_scanner(scanners.http, HTTPScanner)
+    |> maybe_add_scanner(scanners.controller, ControllerScanner)
+    |> maybe_add_scanner(scanners.telemetry, TelemetryScanner)
+    |> maybe_add_scanner(scanners.database, DatabaseScanner)
+    |> maybe_add_scanner(scanners.liveview, LiveViewScanner)
+  end
+
+  defp maybe_add_scanner(modules, nil, _module), do: modules
+
+  defp maybe_add_scanner(modules, scanner_cfg, module) do
+    if Map.get(scanner_cfg, :enabled, true) do
+      modules ++ [module]
+    else
+      modules
     end
   end
 
@@ -184,11 +290,41 @@ defmodule PrivSignal.Scan.Runner do
     )
   end
 
+  defp emit_category_telemetry(category, duration_ms, findings) do
+    by_role_kind =
+      findings
+      |> Enum.map(&Map.get(&1, :role_kind, "logger"))
+      |> Enum.map(&to_string/1)
+      |> Enum.frequencies()
+
+    PrivSignal.Telemetry.emit(
+      [:priv_signal, :scan, :category, :run],
+      %{duration_ms: duration_ms, finding_count: length(findings)},
+      %{category: category, enabled: true, error_count: 0}
+    )
+
+    Enum.each(by_role_kind, fn {role_kind, count} ->
+      PrivSignal.Telemetry.emit(
+        [:priv_signal, :scan, :candidate, :emit],
+        %{count: count},
+        %{node_type: node_type_for_role_kind(role_kind), role_kind: role_kind}
+      )
+    end)
+  end
+
   defp log_run_result(result, strict?) do
     error_counts = error_type_counts(result.errors)
 
+    role_kind_counts =
+      result.findings
+      |> Enum.map(&Map.get(&1, :role_kind, "logger"))
+      |> Enum.map(&to_string/1)
+      |> Enum.frequencies()
+      |> Enum.sort()
+      |> Enum.map_join(",", fn {kind, count} -> "#{kind}:#{count}" end)
+
     Logger.info(
-      "[priv_signal] scan run completed files=#{result.summary.files_scanned} findings=#{length(result.findings)} strict_mode=#{strict?}"
+      "[priv_signal] scan run completed files=#{result.summary.files_scanned} findings=#{length(result.findings)} strict_mode=#{strict?} role_kinds=#{role_kind_counts}"
     )
 
     if result.summary.errors > 0 do
@@ -197,6 +333,17 @@ defmodule PrivSignal.Scan.Runner do
       )
     end
   end
+
+  defp scanner_category(scanner) do
+    scanner
+    |> Module.split()
+    |> List.last()
+    |> to_string()
+    |> String.downcase()
+  end
+
+  defp node_type_for_role_kind("database_read"), do: "source"
+  defp node_type_for_role_kind(_), do: "sink"
 
   defp error_type_counts(errors) do
     Enum.reduce(errors, %{parse_error: 0, timeout: 0, worker_exit: 0}, fn error, acc ->

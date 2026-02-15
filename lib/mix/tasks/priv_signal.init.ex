@@ -33,6 +33,28 @@ defmodule Mix.Tasks.PrivSignal.Init do
             category: identifier
             sensitivity: low
 
+    scanners:
+      logging:
+        enabled: true
+        additional_modules: []
+      http:
+        enabled: true
+        additional_modules: []
+        internal_domains: []
+        external_domains: []
+      controller:
+        enabled: true
+        additional_render_functions: []
+      telemetry:
+        enabled: true
+        additional_modules: []
+      database:
+        enabled: true
+        repo_modules: []
+      liveview:
+        enabled: true
+        additional_modules: []
+
     flows:
       - id: xapi_export
         description: "User activity exported as xAPI statements"

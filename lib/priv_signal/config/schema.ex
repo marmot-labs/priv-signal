@@ -5,6 +5,7 @@ defmodule PrivSignal.Config.Schema do
 
   @required_flow_keys [:id, :description, :purpose, :pii_categories, :path, :exits_system]
   @required_path_keys [:module, :function]
+  @scanner_categories [:logging, :http, :controller, :telemetry, :database, :liveview]
 
   def validate(map) when is_map(map) do
     errors = []
@@ -12,6 +13,7 @@ defmodule PrivSignal.Config.Schema do
     errors = validate_legacy_pii_modules(map, errors)
     errors = validate_pii(map, errors)
     errors = validate_flows(map, errors)
+    errors = validate_scanners(map, errors)
 
     if errors == [] do
       {:ok, Config.from_map(map)}
@@ -191,11 +193,150 @@ defmodule PrivSignal.Config.Schema do
     ["flows[#{fidx}].path[#{sidx}] must be a map" | errors]
   end
 
+  defp validate_scanners(map, errors) do
+    case get(map, :scanners) do
+      nil ->
+        errors
+
+      scanners when is_map(scanners) ->
+        errors
+        |> validate_scanner_unknown_categories(scanners)
+        |> validate_logging_scanner(scanners)
+        |> validate_http_scanner(scanners)
+        |> validate_controller_scanner(scanners)
+        |> validate_telemetry_scanner(scanners)
+        |> validate_database_scanner(scanners)
+        |> validate_liveview_scanner(scanners)
+
+      _ ->
+        ["scanners must be a map" | errors]
+    end
+  end
+
+  defp validate_scanner_unknown_categories(errors, scanners) do
+    allowed = MapSet.new(Enum.map(@scanner_categories, &Atom.to_string/1))
+
+    scanners
+    |> map_keys_as_strings()
+    |> Enum.reject(&MapSet.member?(allowed, &1))
+    |> Enum.reduce(errors, fn key, acc ->
+      ["scanners.#{key} is not a supported scanner category" | acc]
+    end)
+  end
+
+  defp validate_http_scanner(errors, scanners) do
+    validate_scanner_map(scanners, :http, errors, fn http, acc ->
+      acc
+      |> validate_scanner_enabled(http, "scanners.http.enabled")
+      |> validate_string_list(http, :additional_modules, "scanners.http.additional_modules")
+      |> validate_string_list(http, :internal_domains, "scanners.http.internal_domains")
+      |> validate_string_list(http, :external_domains, "scanners.http.external_domains")
+    end)
+  end
+
+  defp validate_logging_scanner(errors, scanners) do
+    validate_scanner_map(scanners, :logging, errors, fn logging, acc ->
+      acc
+      |> validate_scanner_enabled(logging, "scanners.logging.enabled")
+      |> validate_string_list(logging, :additional_modules, "scanners.logging.additional_modules")
+    end)
+  end
+
+  defp validate_controller_scanner(errors, scanners) do
+    validate_scanner_map(scanners, :controller, errors, fn controller, acc ->
+      acc
+      |> validate_scanner_enabled(controller, "scanners.controller.enabled")
+      |> validate_string_list(
+        controller,
+        :additional_render_functions,
+        "scanners.controller.additional_render_functions"
+      )
+    end)
+  end
+
+  defp validate_telemetry_scanner(errors, scanners) do
+    validate_scanner_map(scanners, :telemetry, errors, fn telemetry, acc ->
+      acc
+      |> validate_scanner_enabled(telemetry, "scanners.telemetry.enabled")
+      |> validate_string_list(
+        telemetry,
+        :additional_modules,
+        "scanners.telemetry.additional_modules"
+      )
+    end)
+  end
+
+  defp validate_database_scanner(errors, scanners) do
+    validate_scanner_map(scanners, :database, errors, fn database, acc ->
+      acc
+      |> validate_scanner_enabled(database, "scanners.database.enabled")
+      |> validate_string_list(database, :repo_modules, "scanners.database.repo_modules")
+    end)
+  end
+
+  defp validate_liveview_scanner(errors, scanners) do
+    validate_scanner_map(scanners, :liveview, errors, fn liveview, acc ->
+      acc
+      |> validate_scanner_enabled(liveview, "scanners.liveview.enabled")
+      |> validate_string_list(
+        liveview,
+        :additional_modules,
+        "scanners.liveview.additional_modules"
+      )
+    end)
+  end
+
+  defp validate_scanner_map(scanners, key, errors, validator_fun) do
+    case get(scanners, key) do
+      nil ->
+        errors
+
+      value when is_map(value) ->
+        validator_fun.(value, errors)
+
+      _ ->
+        ["scanners.#{key} must be a map" | errors]
+    end
+  end
+
+  defp validate_scanner_enabled(errors, scanner_map, error_path) do
+    case get(scanner_map, :enabled) do
+      nil -> errors
+      value when is_boolean(value) -> errors
+      _ -> ["#{error_path} must be a boolean" | errors]
+    end
+  end
+
+  defp validate_string_list(errors, scanner_map, key, error_path) do
+    case get(scanner_map, key) do
+      nil ->
+        errors
+
+      list when is_list(list) ->
+        if Enum.all?(list, &is_binary/1) do
+          errors
+        else
+          ["#{error_path} must be a list of strings" | errors]
+        end
+
+      _ ->
+        ["#{error_path} must be a list of strings" | errors]
+    end
+  end
+
   defp get(map, key) when is_atom(key) do
     case Map.fetch(map, key) do
       {:ok, value} -> value
       :error -> Map.get(map, Atom.to_string(key))
     end
+  end
+
+  defp map_keys_as_strings(map) when is_map(map) do
+    Enum.map(Map.keys(map), fn
+      key when is_atom(key) -> Atom.to_string(key)
+      key when is_binary(key) -> key
+      key -> to_string(key)
+    end)
   end
 
   defp list_of_strings?(value) do

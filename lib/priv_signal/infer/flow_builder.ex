@@ -5,8 +5,11 @@ defmodule PrivSignal.Infer.FlowBuilder do
 
   @external_sink_kinds MapSet.new([
                          "http",
+                         "http_response",
                          "http_client",
                          "external_http",
+                         "liveview_render",
+                         "telemetry",
                          "webhook",
                          "s3",
                          "smtp",

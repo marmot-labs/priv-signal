@@ -16,7 +16,15 @@ defmodule PrivSignal.Infer.Runner do
 
     scan_opts =
       opts
-      |> Keyword.take([:strict, :timeout, :max_concurrency, :source, :scan_fun])
+      |> Keyword.take([
+        :strict,
+        :timeout,
+        :max_concurrency,
+        :source,
+        :scan_fun,
+        :parse_fun,
+        :scanner_modules
+      ])
 
     case ScanRunner.run(config, scan_opts) do
       {:ok, scan_result} ->

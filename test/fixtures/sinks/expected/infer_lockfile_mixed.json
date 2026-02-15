@@ -1,0 +1,126 @@
+{
+  "schema_version": "1.2",
+  "tool": {
+    "name": "priv_signal",
+    "version": "phase0-contract"
+  },
+  "git": {
+    "commit": "phase0"
+  },
+  "summary": {
+    "node_count": 6,
+    "flow_count": 0,
+    "flow_candidate_count": 0,
+    "flows_hash": "phase0",
+    "proto_flows_enabled": true,
+    "node_type_counts": {
+      "sink": 5,
+      "source": 1
+    },
+    "boundary_counts": {},
+    "files_scanned": 1,
+    "scan_error_count": 0,
+    "confirmed_count": 0,
+    "possible_count": 0
+  },
+  "nodes": [
+    {
+      "id": "psn_0000000000000001",
+      "node_type": "sink",
+      "pii": [],
+      "code_context": {
+        "module": "Fixtures.MixedSurfaceArea",
+        "function": "perform/3",
+        "file_path": "test/fixtures/sinks/lib/fixtures/mixed_surface_area.ex"
+      },
+      "role": {
+        "kind": "controller",
+        "callee": "json"
+      },
+      "confidence": 0.7,
+      "evidence": []
+    },
+    {
+      "id": "psn_0000000000000002",
+      "node_type": "sink",
+      "pii": [],
+      "code_context": {
+        "module": "Fixtures.MixedSurfaceArea",
+        "function": "perform/3",
+        "file_path": "test/fixtures/sinks/lib/fixtures/mixed_surface_area.ex"
+      },
+      "role": {
+        "kind": "http",
+        "callee": "Req.post!/2"
+      },
+      "confidence": 0.7,
+      "evidence": []
+    },
+    {
+      "id": "psn_0000000000000003",
+      "node_type": "sink",
+      "pii": [],
+      "code_context": {
+        "module": "Fixtures.MixedSurfaceArea",
+        "function": "perform/3",
+        "file_path": "test/fixtures/sinks/lib/fixtures/mixed_surface_area.ex"
+      },
+      "role": {
+        "kind": "liveview_render",
+        "callee": "assign/3"
+      },
+      "confidence": 0.7,
+      "evidence": []
+    },
+    {
+      "id": "psn_0000000000000004",
+      "node_type": "sink",
+      "pii": [],
+      "code_context": {
+        "module": "Fixtures.MixedSurfaceArea",
+        "function": "perform/3",
+        "file_path": "test/fixtures/sinks/lib/fixtures/mixed_surface_area.ex"
+      },
+      "role": {
+        "kind": "telemetry",
+        "callee": ":telemetry.execute/3"
+      },
+      "confidence": 0.7,
+      "evidence": []
+    },
+    {
+      "id": "psn_0000000000000005",
+      "node_type": "source",
+      "pii": [],
+      "code_context": {
+        "module": "Fixtures.MixedSurfaceArea",
+        "function": "perform/3",
+        "file_path": "test/fixtures/sinks/lib/fixtures/mixed_surface_area.ex"
+      },
+      "role": {
+        "kind": "database_read",
+        "callee": "repo.get/2"
+      },
+      "confidence": 0.7,
+      "evidence": []
+    },
+    {
+      "id": "psn_0000000000000006",
+      "node_type": "sink",
+      "pii": [],
+      "code_context": {
+        "module": "Fixtures.MixedSurfaceArea",
+        "function": "perform/3",
+        "file_path": "test/fixtures/sinks/lib/fixtures/mixed_surface_area.ex"
+      },
+      "role": {
+        "kind": "database_write",
+        "callee": "repo.insert/1"
+      },
+      "confidence": 0.7,
+      "evidence": []
+    }
+  ],
+  "flows": [],
+  "errors": []
+}

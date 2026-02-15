@@ -1,0 +1,19 @@
+version: 1
+pii:
+  - module: MyApp.Accounts.User
+    fields:
+      - name: email
+        category: contact
+        sensitivity: medium
+      - name: phone
+        category: contact
+        sensitivity: medium
+flows:
+  - id: "flow-1"
+    description: "User data processing"
+    purpose: "Support account operations"
+    pii_categories: ["contact"]
+    path:
+      - module: "MyApp.Accounts"
+        function: "update_user"
+    exits_system: false

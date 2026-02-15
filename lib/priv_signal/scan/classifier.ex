@@ -22,12 +22,17 @@ defmodule PrivSignal.Scan.Classifier do
       id: fingerprint(candidate, evidence_types, matched_fields),
       classification: classification,
       confidence: confidence,
+      confidence_hint: Map.get(candidate, :confidence_hint),
       sensitivity: sensitivity(matched_fields),
       module: candidate.module,
       function: candidate.function,
       arity: candidate.arity,
       file: candidate.file,
       line: candidate.line,
+      node_type_hint: Map.get(candidate, :node_type_hint),
+      role_kind: Map.get(candidate, :role_kind),
+      role_subtype: Map.get(candidate, :role_subtype),
+      boundary: Map.get(candidate, :boundary),
       sink: candidate.sink,
       matched_fields: matched_fields,
       evidence: candidate.evidence || []
@@ -82,6 +87,9 @@ defmodule PrivSignal.Scan.Classifier do
       [
         candidate.file,
         candidate.line,
+        Map.get(candidate, :node_type_hint),
+        Map.get(candidate, :role_kind),
+        Map.get(candidate, :role_subtype),
         candidate.sink,
         Enum.join(sorted_fields, ","),
         Enum.join(sorted_types, ",")

@@ -26,6 +26,8 @@ defmodule PrivSignal.Infer.ScannerAdapter.LoggingTest do
              &(&1.signal == "direct_field_access" and &1.finding_id == "legacy_id")
            )
 
+    assert Enum.any?(node.evidence, &(&1.rule == "logger_pii"))
+
     assert Enum.any?(node.pii, &(&1.reference == "MyApp.User.email"))
   end
 

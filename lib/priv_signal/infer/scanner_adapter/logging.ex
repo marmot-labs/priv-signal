@@ -6,28 +6,28 @@ defmodule PrivSignal.Infer.ScannerAdapter.Logging do
   def from_findings(findings, opts \\ []) when is_list(findings) do
     emit_entrypoints? = Keyword.get(opts, :emit_entrypoint_nodes, false)
 
-    sink_nodes = Enum.map(findings, &sink_node_from_finding(&1, opts))
+    mapped_nodes = Enum.map(findings, &node_from_finding(&1, opts))
 
     entrypoint_nodes =
       if emit_entrypoints? do
-        sink_nodes
+        mapped_nodes
         |> Enum.flat_map(&entrypoint_node_from_sink/1)
         |> Enum.uniq_by(& &1.id)
       else
         []
       end
 
-    sink_nodes ++ entrypoint_nodes
+    mapped_nodes ++ entrypoint_nodes
   end
 
-  defp sink_node_from_finding(finding, opts) do
+  defp node_from_finding(finding, opts) do
     module_name = Map.get(finding, :module)
     file_path = Map.get(finding, :file)
     entrypoint = ModuleClassifier.classify(module_name, file_path, opts)
 
     node =
       %Node{
-        node_type: "sink",
+        node_type: node_type_from_finding(finding),
         pii: pii_from_finding(finding),
         code_context: %{
           module: module_name,
@@ -35,11 +35,11 @@ defmodule PrivSignal.Infer.ScannerAdapter.Logging do
           file_path: file_path
         },
         role: %{
-          kind: "logger",
-          callee: canonical_callee(Map.get(finding, :sink)),
+          kind: role_kind_from_finding(finding),
+          callee: canonical_callee(role_subtype_from_finding(finding)),
           arity: nil
         },
-        confidence: confidence_value(Map.get(finding, :confidence)),
+        confidence: confidence_value(confidence_from_finding(finding)),
         evidence: evidence_from_finding(finding)
       }
       |> NodeNormalizer.normalize(opts)
@@ -81,6 +81,32 @@ defmodule PrivSignal.Infer.ScannerAdapter.Logging do
       _ ->
         []
     end
+  end
+
+  defp node_type_from_finding(finding) do
+    case Map.get(finding, :node_type_hint) do
+      "source" -> "source"
+      :source -> "source"
+      "sink" -> "sink"
+      :sink -> "sink"
+      _ -> "sink"
+    end
+  end
+
+  defp role_kind_from_finding(finding) do
+    case Map.get(finding, :role_kind) do
+      nil -> "logger"
+      "" -> "logger"
+      value -> to_string(value)
+    end
+  end
+
+  defp role_subtype_from_finding(finding) do
+    Map.get(finding, :role_subtype) || Map.get(finding, :sink)
+  end
+
+  defp confidence_from_finding(finding) do
+    Map.get(finding, :confidence_hint) || Map.get(finding, :confidence)
   end
 
   defp entrypoint_evidence(signal) do
@@ -131,6 +157,7 @@ defmodule PrivSignal.Infer.ScannerAdapter.Logging do
   defp evidence_from_finding(finding) do
     line = Map.get(finding, :line)
     finding_id = Map.get(finding, :id)
+    role_kind = role_kind_from_finding(finding)
 
     finding
     |> Map.get(:evidence, [])
@@ -138,7 +165,7 @@ defmodule PrivSignal.Infer.ScannerAdapter.Logging do
       type = Map.get(evidence, :type)
 
       %{
-        rule: "logging_pii",
+        rule: "#{role_kind}_pii",
         signal: if(is_atom(type), do: Atom.to_string(type), else: to_string(type || "unknown")),
         finding_id: finding_id,
         line: line,
@@ -164,5 +191,6 @@ defmodule PrivSignal.Infer.ScannerAdapter.Logging do
   defp ast_kind(:key_match), do: "key_match"
   defp ast_kind(:pii_container), do: "struct"
   defp ast_kind(:bulk_inspect), do: "call"
+  defp ast_kind(:token_match), do: "token"
   defp ast_kind(_), do: "unknown"
 end

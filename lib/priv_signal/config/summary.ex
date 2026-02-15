@@ -9,6 +9,7 @@ defmodule PrivSignal.Config.Summary do
       version: config.version,
       pii: Enum.map(PII.entries(config), &pii_entry_summary/1),
       pii_modules: PII.modules(config),
+      scanners: scanners_summary(config),
       flows: Enum.map(config.flows, &flow_summary/1)
     }
   end
@@ -45,5 +46,29 @@ defmodule PrivSignal.Config.Summary do
       module: step.module,
       function: step.function
     }
+  end
+
+  defp scanners_summary(config) do
+    scanners = config.scanners || PrivSignal.Config.default_scanners()
+
+    %{
+      logging: scanner_entry_summary(scanners.logging),
+      http: scanner_entry_summary(scanners.http),
+      controller: scanner_entry_summary(scanners.controller),
+      telemetry: scanner_entry_summary(scanners.telemetry),
+      database: scanner_entry_summary(scanners.database),
+      liveview: scanner_entry_summary(scanners.liveview)
+    }
+  end
+
+  defp scanner_entry_summary(scanner) when is_map(scanner) do
+    scanner
+    |> Map.from_struct()
+    |> Enum.into(%{}, fn {key, value} ->
+      case value do
+        list when is_list(list) -> {key, Enum.sort(list)}
+        _ -> {key, value}
+      end
+    end)
   end
 end
