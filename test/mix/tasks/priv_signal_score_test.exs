@@ -1,61 +1,107 @@
 defmodule Mix.Tasks.PrivSignal.ScoreTest do
   use ExUnit.Case
 
-  test "validates priv-signal.yml and reports success" do
-    tmp_dir =
-      Path.join(System.tmp_dir!(), "priv_signal_score_#{System.unique_integer([:positive])}")
-
-    File.mkdir_p!(tmp_dir)
-
-    File.cd!(tmp_dir, fn ->
+  test "scores deterministic output from --diff input" do
+    with_tmp_dir(fn ->
       File.write!("priv-signal.yml", sample_yaml())
+      File.write!("privacy_diff.json", Jason.encode!(sample_diff(), pretty: true))
 
       Mix.shell(Mix.Shell.Process)
-      Mix.Tasks.PrivSignal.Score.run([])
+      Mix.Tasks.PrivSignal.Score.run(["--diff", "privacy_diff.json", "--output", "score.json"])
 
-      assert_received {:mix_shell, :info, ["priv-signal.yml is valid"]}
-      assert_received {:mix_shell, :error, [message]}
-      assert String.starts_with?(message, "git diff failed:")
+      assert_received {:mix_shell, :info, ["score=HIGH points=9"]}
+      assert_received {:mix_shell, :info, ["score output written: score.json"]}
+
+      assert File.exists?("score.json")
+      {:ok, output} = File.read("score.json")
+      {:ok, payload} = Jason.decode(output)
+
+      assert payload["score"] == "HIGH"
+      assert payload["points"] == 9
+      assert is_list(payload["reasons"])
     end)
   end
 
-  test "fails fast when validation fails" do
-    tmp_dir =
-      Path.join(System.tmp_dir!(), "priv_signal_score_#{System.unique_integer([:positive])}")
-
-    File.mkdir_p!(tmp_dir)
-
-    File.cd!(tmp_dir, fn ->
-      File.write!("priv-signal.yml", failing_yaml())
-
+  test "fails when --diff is missing" do
+    with_tmp_dir(fn ->
+      File.write!("priv-signal.yml", sample_yaml())
       Mix.shell(Mix.Shell.Process)
 
-      assert_raise Mix.Error, ~r/data flow validation failed/, fn ->
+      assert_raise Mix.Error, ~r/score failed/, fn ->
         Mix.Tasks.PrivSignal.Score.run([])
       end
 
-      errors = collect_errors([])
-      # Ensure validation halts before diff/LLM steps attempt to run.
-      refute Enum.any?(errors, &String.contains?(&1, "git diff failed"))
-      assert Enum.any?(errors, &String.contains?(&1, "missing function"))
+      assert_received {:mix_shell, :error, ["--diff is required"]}
     end)
   end
 
-  test "reports config error when deprecated pii_modules key is used" do
+  test "scores without requiring flows in config" do
+    with_tmp_dir(fn ->
+      File.write!(
+        "priv-signal.yml",
+        """
+        version: 1
+
+        pii:
+          - module: PrivSignal.Config
+            fields:
+              - name: email
+                category: contact
+                sensitivity: medium
+        """
+      )
+
+      File.write!("privacy_diff.json", Jason.encode!(sample_diff(), pretty: true))
+
+      Mix.shell(Mix.Shell.Process)
+      Mix.Tasks.PrivSignal.Score.run(["--diff", "privacy_diff.json", "--output", "score.json"])
+
+      assert File.exists?("score.json")
+    end)
+  end
+
+  test "fails when diff json is malformed" do
+    with_tmp_dir(fn ->
+      File.write!("priv-signal.yml", sample_yaml())
+      File.write!("privacy_diff.json", "{not json")
+
+      Mix.shell(Mix.Shell.Process)
+
+      assert_raise Mix.Error, ~r/score failed/, fn ->
+        Mix.Tasks.PrivSignal.Score.run(["--diff", "privacy_diff.json"])
+      end
+
+      assert_received {:mix_shell, :error, [message]}
+      assert String.contains?(message, "diff JSON parse failed")
+    end)
+  end
+
+  test "fails on unsupported diff schema version" do
+    with_tmp_dir(fn ->
+      File.write!("priv-signal.yml", sample_yaml())
+
+      invalid_diff = Map.put(sample_diff(), :version, "v9")
+      File.write!("privacy_diff.json", Jason.encode!(invalid_diff, pretty: true))
+
+      Mix.shell(Mix.Shell.Process)
+
+      assert_raise Mix.Error, ~r/score failed/, fn ->
+        Mix.Tasks.PrivSignal.Score.run(["--diff", "privacy_diff.json"])
+      end
+
+      assert_received {:mix_shell, :error, [message]}
+      assert String.contains?(message, "unsupported diff version")
+    end)
+  end
+
+  defp with_tmp_dir(fun) do
     tmp_dir =
       Path.join(System.tmp_dir!(), "priv_signal_score_#{System.unique_integer([:positive])}")
 
     File.mkdir_p!(tmp_dir)
 
     File.cd!(tmp_dir, fn ->
-      File.write!("priv-signal.yml", deprecated_yaml())
-
-      Mix.shell(Mix.Shell.Process)
-      Mix.Tasks.PrivSignal.Score.run([])
-
-      errors = collect_errors([])
-      assert Enum.any?(errors, &String.contains?(&1, "priv-signal.yml is invalid"))
-      assert Enum.any?(errors, &String.contains?(&1, "pii_modules is deprecated"))
+      fun.()
     end)
   end
 
@@ -87,49 +133,29 @@ defmodule Mix.Tasks.PrivSignal.ScoreTest do
     """
   end
 
-  defp failing_yaml do
-    """
-    version: 1
-
-    pii:
-      - module: PrivSignal.Config
-        fields:
-          - name: email
-            category: contact
-            sensitivity: medium
-
-    flows:
-      - id: broken_chain
-        description: "Broken chain"
-        purpose: setup
-        pii_categories:
-          - config
-        path:
-          - module: PrivSignal.Config.Loader
-            function: load
-          - module: PrivSignal.Config
-            function: missing_function
-        exits_system: false
-    """
-  end
-
-  defp deprecated_yaml do
-    """
-    version: 1
-
-    pii_modules:
-      - PrivSignal.Config
-
-    flows: []
-    """
-  end
-
-  defp collect_errors(acc) do
-    receive do
-      {:mix_shell, :error, [message]} -> collect_errors([message | acc])
-      _ -> collect_errors(acc)
-    after
-      0 -> Enum.reverse(acc)
-    end
+  defp sample_diff do
+    %{
+      version: "v1",
+      metadata: %{base_ref: "origin/main"},
+      summary: %{high: 1, medium: 1, low: 0, total: 2},
+      changes: [
+        %{
+          type: "flow_changed",
+          flow_id: "payments",
+          change: "external_sink_added",
+          severity: "high",
+          rule_id: "R-HIGH-EXTERNAL-SINK-ADDED",
+          details: %{}
+        },
+        %{
+          type: "flow_changed",
+          flow_id: "users",
+          change: "pii_fields_expanded",
+          severity: "medium",
+          rule_id: "R-MEDIUM-PII-EXPANDED",
+          details: %{added_fields: ["email"]}
+        }
+      ]
+    }
   end
 end

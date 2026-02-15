@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Deterministic Diff-Based Scoring (V1)
+
+- Reworked `mix priv_signal.score` to consume semantic diff JSON artifacts via `--diff` and emit deterministic score JSON output.
+- Added deterministic score modules under `PrivSignal.Score.*` (input contract validation, rules, buckets, engine, output writer, optional advisory wrapper).
+- Added scoring config support:
+  - `scoring.weights`
+  - `scoring.thresholds`
+  - `scoring.llm_interpretation.*` (disabled by default)
+- Removed legacy LLM-first risk-assessment path from score command execution.
+- Added score telemetry events for run lifecycle, per-rule hit counts, and advisory outcomes.
+- Score command now validates config in score mode and does not require configured `flows`.
+
 ### Scan Feature and PII Config Cutover
 
 - Added `mix priv_signal.scan` for deterministic AST-based scanning of PII-relevant logging sinks.

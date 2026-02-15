@@ -8,6 +8,10 @@ defmodule PrivSignal.Config do
     PIIEntry,
     PIIField,
     PathStep,
+    Scoring,
+    Scoring.LLMInterpretation,
+    Scoring.Thresholds,
+    Scoring.Weights,
     Scanners,
     Scanners.Controller,
     Scanners.Database,
@@ -87,7 +91,28 @@ defmodule PrivSignal.Config do
               liveview: nil
   end
 
-  defstruct version: 1, pii: [], flows: [], scanners: nil
+  defmodule Scoring do
+    @moduledoc false
+
+    defmodule Weights do
+      @moduledoc false
+      defstruct values: %{}
+    end
+
+    defmodule Thresholds do
+      @moduledoc false
+      defstruct low_max: 3, medium_max: 8, high_min: 9
+    end
+
+    defmodule LLMInterpretation do
+      @moduledoc false
+      defstruct enabled: false, model: "gpt-5", timeout_ms: 8_000, retries: 1
+    end
+
+    defstruct weights: nil, thresholds: nil, llm_interpretation: nil
+  end
+
+  defstruct version: 1, pii: [], flows: [], scanners: nil, scoring: nil
 
   @doc false
   def from_map(map) when is_map(map) do
@@ -95,7 +120,8 @@ defmodule PrivSignal.Config do
       version: get(map, :version),
       pii: Enum.map(get(map, :pii) || [], &pii_entry_from_map/1),
       flows: Enum.map(get(map, :flows) || [], &flow_from_map/1),
-      scanners: scanners_from_map(get(map, :scanners))
+      scanners: scanners_from_map(get(map, :scanners)),
+      scoring: scoring_from_map(get(map, :scoring))
     }
   end
 
@@ -107,6 +133,25 @@ defmodule PrivSignal.Config do
       telemetry: %Telemetry{},
       database: %Database{},
       liveview: %LiveView{}
+    }
+  end
+
+  def default_scoring do
+    defaults = PrivSignal.Score.Defaults
+
+    %Scoring{
+      weights: %Weights{values: defaults.weights()},
+      thresholds: %Thresholds{
+        low_max: defaults.thresholds().low_max,
+        medium_max: defaults.thresholds().medium_max,
+        high_min: defaults.thresholds().high_min
+      },
+      llm_interpretation: %LLMInterpretation{
+        enabled: defaults.llm_interpretation().enabled,
+        model: defaults.llm_interpretation().model,
+        timeout_ms: defaults.llm_interpretation().timeout_ms,
+        retries: defaults.llm_interpretation().retries
+      }
     }
   end
 
@@ -155,6 +200,32 @@ defmodule PrivSignal.Config do
   end
 
   defp scanners_from_map(_), do: default_scanners()
+
+  defp scoring_from_map(nil), do: default_scoring()
+
+  defp scoring_from_map(map) when is_map(map) do
+    defaults = default_scoring()
+    weights = get(map, :weights) || %{}
+    thresholds = get(map, :thresholds) || %{}
+    llm = get(map, :llm_interpretation) || %{}
+
+    %Scoring{
+      weights: %Weights{values: Map.merge(defaults.weights.values, stringify_keys(weights))},
+      thresholds: %Thresholds{
+        low_max: get(thresholds, :low_max) || defaults.thresholds.low_max,
+        medium_max: get(thresholds, :medium_max) || defaults.thresholds.medium_max,
+        high_min: get(thresholds, :high_min) || defaults.thresholds.high_min
+      },
+      llm_interpretation: %LLMInterpretation{
+        enabled: get(llm, :enabled) || defaults.llm_interpretation.enabled,
+        model: get(llm, :model) || defaults.llm_interpretation.model,
+        timeout_ms: get(llm, :timeout_ms) || defaults.llm_interpretation.timeout_ms,
+        retries: get(llm, :retries) || defaults.llm_interpretation.retries
+      }
+    }
+  end
+
+  defp scoring_from_map(_), do: default_scoring()
 
   defp logging_scanner_from_map(nil), do: %Logging{}
 
@@ -246,5 +317,18 @@ defmodule PrivSignal.Config do
       {:ok, value} -> value
       :error -> Map.get(map, Atom.to_string(key))
     end
+  end
+
+  defp stringify_keys(map) when is_map(map) do
+    Enum.into(map, %{}, fn {key, value} ->
+      normalized_key =
+        case key do
+          atom when is_atom(atom) -> Atom.to_string(atom)
+          binary when is_binary(binary) -> binary
+          other -> to_string(other)
+        end
+
+      {normalized_key, value}
+    end)
   end
 end

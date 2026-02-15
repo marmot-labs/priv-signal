@@ -42,6 +42,23 @@ defmodule PrivSignal.Config.SchemaTest do
     assert "flows is required" in errors
   end
 
+  test "allows missing flows in score mode" do
+    map = %{
+      "version" => 1,
+      "pii" => [
+        %{
+          "module" => "MyApp.Accounts.User",
+          "fields" => [
+            %{"name" => "email", "category" => "contact", "sensitivity" => "medium"}
+          ]
+        }
+      ]
+    }
+
+    assert {:ok, config} = Schema.validate(map, mode: :score)
+    assert config.flows == []
+  end
+
   test "rejects deprecated pii_modules key" do
     map = %{
       "version" => 1,
@@ -63,5 +80,56 @@ defmodule PrivSignal.Config.SchemaTest do
              errors,
              &String.contains?(&1, "pii_modules is deprecated")
            )
+  end
+
+  test "accepts scoring config overrides" do
+    map = %{
+      "version" => 1,
+      "pii" => [
+        %{
+          "module" => "MyApp.Accounts.User",
+          "fields" => [
+            %{"name" => "email", "category" => "contact", "sensitivity" => "medium"}
+          ]
+        }
+      ],
+      "flows" => [],
+      "scoring" => %{
+        "weights" => %{"R-HIGH-EXTERNAL-SINK-ADDED" => 7},
+        "thresholds" => %{"low_max" => 2, "medium_max" => 6, "high_min" => 7},
+        "llm_interpretation" => %{
+          "enabled" => false,
+          "model" => "gpt-5-mini",
+          "timeout_ms" => 5000
+        }
+      }
+    }
+
+    assert {:ok, config} = Schema.validate(map)
+    assert config.scoring.weights.values["R-HIGH-EXTERNAL-SINK-ADDED"] == 7
+    assert config.scoring.thresholds.low_max == 2
+    assert config.scoring.llm_interpretation.model == "gpt-5-mini"
+  end
+
+  test "rejects invalid scoring threshold ordering" do
+    map = %{
+      "version" => 1,
+      "pii" => [
+        %{
+          "module" => "MyApp.Accounts.User",
+          "fields" => [
+            %{"name" => "email", "category" => "contact", "sensitivity" => "medium"}
+          ]
+        }
+      ],
+      "flows" => [],
+      "scoring" => %{
+        "thresholds" => %{"low_max" => 5, "medium_max" => 4, "high_min" => 9}
+      }
+    }
+
+    assert {:error, errors} = Schema.validate(map)
+
+    assert "scoring.thresholds must satisfy low_max < medium_max < high_min" in errors
   end
 end

@@ -7,13 +7,17 @@ defmodule PrivSignal.Config.Schema do
   @required_path_keys [:module, :function]
   @scanner_categories [:logging, :http, :controller, :telemetry, :database, :liveview]
 
-  def validate(map) when is_map(map) do
+  def validate(map, opts \\ [])
+
+  def validate(map, opts) when is_map(map) and is_list(opts) do
+    mode = Keyword.get(opts, :mode, :default)
     errors = []
     errors = validate_version(map, errors)
     errors = validate_legacy_pii_modules(map, errors)
     errors = validate_pii(map, errors)
-    errors = validate_flows(map, errors)
+    errors = validate_flows(map, errors, mode)
     errors = validate_scanners(map, errors)
+    errors = validate_scoring(map, errors)
 
     if errors == [] do
       {:ok, Config.from_map(map)}
@@ -22,7 +26,7 @@ defmodule PrivSignal.Config.Schema do
     end
   end
 
-  def validate(_), do: {:error, ["config must be a map"]}
+  def validate(_, _), do: {:error, ["config must be a map"]}
 
   defp validate_version(map, errors) do
     case get(map, :version) do
@@ -104,10 +108,14 @@ defmodule PrivSignal.Config.Schema do
     ["pii[#{idx}].fields[#{field_idx}] must be a map" | errors]
   end
 
-  defp validate_flows(map, errors) do
+  defp validate_flows(map, errors, mode) do
     case get(map, :flows) do
       nil ->
-        ["flows is required" | errors]
+        if mode == :score do
+          errors
+        else
+          ["flows is required" | errors]
+        end
 
       list when is_list(list) ->
         Enum.reduce(Enum.with_index(list), errors, fn {flow, idx}, acc ->
@@ -321,6 +329,135 @@ defmodule PrivSignal.Config.Schema do
 
       _ ->
         ["#{error_path} must be a list of strings" | errors]
+    end
+  end
+
+  defp validate_scoring(map, errors) do
+    case get(map, :scoring) do
+      nil ->
+        errors
+
+      scoring when is_map(scoring) ->
+        errors
+        |> validate_scoring_weights(scoring)
+        |> validate_scoring_thresholds(scoring)
+        |> validate_scoring_llm_interpretation(scoring)
+
+      _ ->
+        ["scoring must be a map" | errors]
+    end
+  end
+
+  defp validate_scoring_weights(errors, scoring) do
+    case get(scoring, :weights) do
+      nil ->
+        errors
+
+      weights when is_map(weights) ->
+        Enum.reduce(weights, errors, fn {rule_id, value}, acc ->
+          cond do
+            not is_binary(to_string(rule_id)) ->
+              ["scoring.weights keys must be strings" | acc]
+
+            not is_integer(value) ->
+              ["scoring.weights.#{rule_id} must be an integer" | acc]
+
+            value < 0 ->
+              ["scoring.weights.#{rule_id} must be >= 0" | acc]
+
+            true ->
+              acc
+          end
+        end)
+
+      _ ->
+        ["scoring.weights must be a map" | errors]
+    end
+  end
+
+  defp validate_scoring_thresholds(errors, scoring) do
+    case get(scoring, :thresholds) do
+      nil ->
+        errors
+
+      thresholds when is_map(thresholds) ->
+        defaults = PrivSignal.Score.Defaults.thresholds()
+        low_max = get(thresholds, :low_max) || defaults.low_max
+        medium_max = get(thresholds, :medium_max) || defaults.medium_max
+        high_min = get(thresholds, :high_min) || defaults.high_min
+
+        errors
+        |> validate_non_negative_integer(low_max, "scoring.thresholds.low_max")
+        |> validate_non_negative_integer(medium_max, "scoring.thresholds.medium_max")
+        |> validate_non_negative_integer(high_min, "scoring.thresholds.high_min")
+        |> validate_threshold_monotonic(low_max, medium_max, high_min)
+
+      _ ->
+        ["scoring.thresholds must be a map" | errors]
+    end
+  end
+
+  defp validate_scoring_llm_interpretation(errors, scoring) do
+    case get(scoring, :llm_interpretation) do
+      nil ->
+        errors
+
+      llm when is_map(llm) ->
+        errors
+        |> validate_boolean(llm, :enabled, "scoring.llm_interpretation.enabled")
+        |> validate_optional_non_empty_string(llm, :model, "scoring.llm_interpretation.model")
+        |> validate_non_negative_integer(
+          get(llm, :timeout_ms),
+          "scoring.llm_interpretation.timeout_ms"
+        )
+        |> validate_non_negative_integer(
+          get(llm, :retries),
+          "scoring.llm_interpretation.retries"
+        )
+
+      _ ->
+        ["scoring.llm_interpretation must be a map" | errors]
+    end
+  end
+
+  defp validate_boolean(errors, map, key, path) do
+    case get(map, key) do
+      nil -> errors
+      value when is_boolean(value) -> errors
+      _ -> ["#{path} must be a boolean" | errors]
+    end
+  end
+
+  defp validate_optional_non_empty_string(errors, map, key, path) do
+    case get(map, key) do
+      nil ->
+        errors
+
+      value when is_binary(value) ->
+        if String.trim(value) == "" do
+          ["#{path} must be a non-empty string" | errors]
+        else
+          errors
+        end
+
+      _ ->
+        ["#{path} must be a non-empty string" | errors]
+    end
+  end
+
+  defp validate_non_negative_integer(errors, nil, _path), do: errors
+
+  defp validate_non_negative_integer(errors, value, _path)
+       when is_integer(value) and value >= 0,
+       do: errors
+
+  defp validate_non_negative_integer(errors, _value, path), do: ["#{path} must be >= 0" | errors]
+
+  defp validate_threshold_monotonic(errors, low_max, medium_max, high_min) do
+    if low_max < medium_max and medium_max < high_min do
+      errors
+    else
+      ["scoring.thresholds must satisfy low_max < medium_max < high_min" | errors]
     end
   end
 

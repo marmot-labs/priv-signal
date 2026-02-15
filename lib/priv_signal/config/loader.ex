@@ -3,19 +3,20 @@ defmodule PrivSignal.Config.Loader do
 
   alias PrivSignal.Config.Schema
 
-  def load(path \\ PrivSignal.config_path()) do
+  def load(path \\ PrivSignal.config_path(), opts \\ []) do
     start = System.monotonic_time()
+    mode = Keyword.get(opts, :mode, :default)
 
     result =
       with {:ok, raw} <- parse_yaml(path),
-           {:ok, config} <- Schema.validate(raw) do
+           {:ok, config} <- Schema.validate(raw, mode: mode) do
         {:ok, config}
       end
 
     PrivSignal.Telemetry.emit(
       [:priv_signal, :config, :load],
       %{duration_ms: duration_ms(start)},
-      %{path: path, ok: match?({:ok, _}, result)}
+      %{path: path, ok: match?({:ok, _}, result), mode: mode}
     )
 
     result

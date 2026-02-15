@@ -1,120 +1,131 @@
 defmodule Mix.Tasks.PrivSignal.Score do
   use Mix.Task
 
-  @shortdoc "Score a PR for privacy risk (Phase 0: config only)"
+  require Logger
 
-  @moduledoc """
-  Validates priv-signal.yml. Later phases will run full analysis.
-  """
+  alias PrivSignal.Score
+
+  @shortdoc "Compute deterministic privacy risk score from semantic diff JSON"
+
+  @switches [help: :boolean, diff: :string, output: :string, quiet: :boolean]
 
   @impl true
   def run(args) do
     _ = PrivSignal.Runtime.ensure_started()
-    options = PrivSignal.Git.Options.parse(args)
 
-    with {:ok, config} <- load_config(),
-         :ok <- validate_flows(config),
-         {:ok, diff} <- load_diff(options) do
-      summary = PrivSignal.Config.Summary.build(config)
-      messages = PrivSignal.LLM.Prompt.build(diff, summary)
+    case parse_args(args) do
+      {:ok, options} ->
+        PrivSignal.Telemetry.emit([:priv_signal, :score, :run, :start], %{}, %{})
 
-      result =
-        with {:ok, raw} <- PrivSignal.LLM.Client.request(messages),
-             {:ok, validated} <- PrivSignal.Analysis.Validator.validate(raw, diff) do
-          normalized = PrivSignal.Analysis.Normalizer.normalize(validated)
-          events = PrivSignal.Analysis.Events.from_payload(normalized)
-          PrivSignal.Risk.Assessor.assess(events, flows: config.flows)
+        with {:ok, config} <- load_config(),
+             {:ok, diff} <- Score.Input.load_diff_json(options.diff),
+             {:ok, report} <- Score.Engine.run(diff, config.scoring),
+             {:ok, llm_interpretation} <- run_advisory(diff, report, config, options),
+             json <- Score.Output.JSON.render(report, llm_interpretation),
+             {:ok, output_path} <- Score.Output.Writer.write(json, output: options.output) do
+          unless options.quiet do
+            Mix.shell().info("score=#{report.score} points=#{report.points}")
+            Mix.shell().info("score output written: #{output_path}")
+          end
         else
-          {:error, errors} when is_list(errors) -> fallback(errors)
-          {:error, error} -> fallback([error])
+          {:error, reason} ->
+            Logger.error("[priv_signal] score failed reason=#{inspect(reason)}")
+            Mix.shell().error(format_error(reason))
+
+            PrivSignal.Telemetry.emit(
+              [:priv_signal, :score, :run, :error],
+              %{error_count: 1},
+              %{reason: inspect(reason)}
+            )
+
+            Mix.raise("score failed")
         end
 
-      markdown = PrivSignal.Output.Markdown.render(result)
-      json = PrivSignal.Output.JSON.render(result)
+      :help ->
+        :ok
 
-      case PrivSignal.Output.Writer.write(markdown, json) do
-        {:ok, path} -> Mix.shell().info("Wrote JSON output to #{path}")
-        {:error, reason} -> Mix.shell().error("Failed to write JSON output: #{inspect(reason)}")
-      end
-    else
-      {:error, errors} when is_list(errors) -> render_errors(errors)
-      {:error, error} -> render_errors(error)
+      {:error, reason} ->
+        Mix.shell().error(format_error(reason))
+        Mix.raise("score failed")
     end
   end
 
-  defp render_errors(errors) when is_list(errors) do
-    Enum.each(errors, fn error ->
-      Mix.shell().error("- #{format_error(error)}")
-    end)
-  end
+  defp parse_args(args) do
+    {opts, _argv, invalid} = OptionParser.parse(args, strict: @switches)
 
-  defp render_errors(error) do
-    Mix.shell().error("- #{format_error(error)}")
-  end
+    cond do
+      invalid != [] ->
+        {:error,
+         "invalid options: #{Enum.map_join(invalid, ", ", fn {opt, _} -> "--#{opt}" end)}"}
 
-  defp format_error(error) when is_binary(error), do: error
-  defp format_error(error), do: inspect(error)
+      Keyword.get(opts, :help, false) ->
+        Mix.shell().info(usage())
+        :help
+
+      not is_binary(Keyword.get(opts, :diff)) ->
+        {:error, "--diff is required"}
+
+      true ->
+        {:ok,
+         %{
+           diff: Keyword.fetch!(opts, :diff),
+           output: Keyword.get(opts, :output, "priv_signal_score.json"),
+           quiet: Keyword.get(opts, :quiet, false)
+         }}
+    end
+  end
 
   defp load_config do
-    case PrivSignal.Config.Loader.load() do
-      {:ok, config} ->
-        Mix.shell().info("priv-signal.yml is valid")
-        {:ok, config}
-
-      {:error, errors} ->
-        Mix.shell().error("priv-signal.yml is invalid")
-        render_errors(errors)
-        {:error, errors}
+    case PrivSignal.Config.Loader.load(PrivSignal.config_path(), mode: :score) do
+      {:ok, config} -> {:ok, config}
+      {:error, reason} -> {:error, {:config_load_failed, reason}}
     end
   end
 
-  defp load_diff(options) do
-    case PrivSignal.Git.Diff.get(options.base, options.head) do
-      {:ok, diff} ->
-        Mix.shell().info("git diff loaded (#{byte_size(diff)} bytes)")
-        {:ok, diff}
+  defp run_advisory(diff, report, config, options) do
+    case Score.Advisory.run(diff, report, config.scoring.llm_interpretation) do
+      {:ok, payload} ->
+        {:ok, payload}
 
-      {:error, error} ->
-        Mix.shell().error("git diff failed: #{error}")
-        {:error, error}
-    end
-  end
-
-  defp validate_flows(config) do
-    case PrivSignal.Validate.run(config) do
-      {:ok, results} ->
-        render_validation(results)
-
-        case PrivSignal.Validate.status(results) do
-          :ok -> :ok
-          :error -> Mix.raise("data flow validation failed")
+      {:error, reason} ->
+        unless options.quiet do
+          Mix.shell().error("advisory interpretation failed (non-fatal): #{inspect(reason)}")
         end
 
-      {:error, errors} ->
-        render_validation_errors(errors)
-        Mix.raise("data flow validation failed")
+        {:ok, %{error: inspect(reason)}}
     end
   end
 
-  defp render_validation(results) do
-    results
-    |> PrivSignal.Validate.Output.format_results()
-    |> Enum.each(&emit_validation_line/1)
+  defp format_error({:config_load_failed, reason}), do: "config load failed: #{inspect(reason)}"
+  defp format_error({:diff_json_parse_failed, reason}), do: "diff JSON parse failed: #{reason}"
+
+  defp format_error(
+         {:unsupported_diff_version, %{version: version, supported_versions: supported}}
+       ) do
+    "unsupported diff version #{version}; supported versions: #{Enum.join(supported, ", ")}"
   end
 
-  defp render_validation_errors(errors) do
-    errors
-    |> PrivSignal.Validate.Output.format_errors()
-    |> Enum.each(&emit_validation_line/1)
-  end
+  defp format_error({:missing_required_field, field}), do: "missing required field: #{field}"
 
-  defp emit_validation_line(%{level: :info, message: message}), do: Mix.shell().info(message)
-  defp emit_validation_line(%{level: :error, message: message}), do: Mix.shell().error(message)
+  defp format_error({:invalid_change, %{index: idx, reason: reason}}),
+    do: "invalid change at index #{idx}: #{reason}"
 
-  defp fallback(errors) do
-    Mix.shell().error("LLM analysis failed; falling back to NONE")
-    render_errors(errors)
+  defp format_error({:invalid_diff_contract, reason}),
+    do: "invalid diff contract: #{inspect(reason)}"
 
-    %{category: :none, reasons: [], events: []}
+  defp format_error(reason) when is_binary(reason), do: reason
+  defp format_error(reason), do: inspect(reason)
+
+  defp usage do
+    """
+    Usage:
+      mix priv_signal.score --diff <path> [options]
+
+    Options:
+      --diff <path>       Path to semantic diff JSON artifact (required)
+      --output <path>     Output score JSON path (default: priv_signal_score.json)
+      --quiet             Suppress CLI summary output
+      --help              Show this help
+    """
   end
 end

@@ -9,8 +9,8 @@ using a project-defined map of privacy-relevant data flows.
 mix priv_signal.init
 mix priv_signal.validate
 mix priv_signal.scan
-mix priv_signal.diff --base origin/main
-mix priv_signal.score --base origin/main --head HEAD
+mix priv_signal.diff --base origin/main --format json --output tmp/privacy_diff.json
+mix priv_signal.score --diff tmp/privacy_diff.json --output tmp/priv_signal_score.json
 ```
 
 ## Configuration
@@ -78,7 +78,7 @@ Run deterministic flow validation against your codebase:
 mix priv_signal.validate
 ```
 
-This validation step also runs automatically at the start of `mix priv_signal.score` and will fail fast if any configured flow is invalid.
+`mix priv_signal.score` no longer runs flow validation; it scores a semantic diff artifact produced by `mix priv_signal.diff`.
 
 ## Scan Lockfile
 
@@ -172,7 +172,7 @@ pii:
 
 ## Environment Variables
 
-- `PRIV_SIGNAL_MODEL_API_KEY`: API key for the model provider (required).
+- `PRIV_SIGNAL_MODEL_API_KEY`: API key for optional advisory model interpretation (only required when `scoring.llm_interpretation.enabled: true`).
 - `PRIV_SIGNAL_SECONDARY_API_KEY`: OpenAI organization key for compatible endpoints (optional).
 - `PRIV_SIGNAL_MODEL_URL`: Override the OpenAI-compatible base URL (optional).
 - `PRIV_SIGNAL_MODEL`: Model identifier (defaults to `gpt-5`).
@@ -196,10 +196,11 @@ jobs:
           elixir-version: "1.18"
           otp-version: "27"
       - run: mix deps.get
-      - run: mix priv_signal.score --base origin/main --head HEAD
+      - run: mix priv_signal.scan
+      - run: mix priv_signal.diff --base origin/main --format json --output tmp/privacy_diff.json
+      - run: mix priv_signal.score --diff tmp/privacy_diff.json --output tmp/priv_signal_score.json
         env:
-          PRIV_SIGNAL_MODEL_API_KEY: ${{ secrets.PRIV_SIGNAL_MODEL_API_KEY }}
-          PRIV_SIGNAL_SECONDARY_API_KEY: ${{ secrets.PRIV_SIGNAL_SECONDARY_API_KEY }}
+          PRIV_SIGNAL_MODEL_API_KEY: ${{ secrets.PRIV_SIGNAL_MODEL_API_KEY }} # optional advisory only
 ```
 
 ## Telemetry

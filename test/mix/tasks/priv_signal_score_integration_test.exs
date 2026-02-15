@@ -1,79 +1,37 @@
 defmodule Mix.Tasks.PrivSignal.ScoreIntegrationTest do
   use ExUnit.Case
 
-  test "runs pipeline with mocked LLM" do
+  test "runs score pipeline from diff artifact to score artifact" do
     tmp_dir =
-      Path.join(System.tmp_dir!(), "priv_signal_pipeline_#{System.unique_integer([:positive])}")
+      Path.join(
+        System.tmp_dir!(),
+        "priv_signal_score_pipeline_#{System.unique_integer([:positive])}"
+      )
 
     File.mkdir_p!(tmp_dir)
 
-    try do
-      File.cd!(tmp_dir, fn ->
-        File.write!("priv-signal.yml", sample_yaml())
-        File.write!("priv-signal.json", "")
+    File.cd!(tmp_dir, fn ->
+      File.write!("priv-signal.yml", sample_yaml())
+      File.write!("privacy_diff.json", Jason.encode!(sample_diff(), pretty: true))
 
-        mix_file = Path.join(tmp_dir, "mix.exs")
-        File.write!(mix_file, "defmodule Dummy do end")
+      Mix.shell(Mix.Shell.Process)
 
-        Mix.shell(Mix.Shell.Process)
+      Mix.Tasks.PrivSignal.Score.run([
+        "--diff",
+        "privacy_diff.json",
+        "--output",
+        "score.json",
+        "--quiet"
+      ])
 
-        diff = """
-        diff --git a/lib/foo.ex b/lib/foo.ex
-        index 0000000..1111111 100644
-        --- a/lib/foo.ex
-        +++ b/lib/foo.ex
-        @@ -1,2 +10,3 @@
-         defmodule Foo do
-        +  def bar, do: :ok
-         end
-        """
+      assert File.exists?("score.json")
 
-        config = PrivSignal.Config.Loader.load("priv-signal.yml") |> elem(1)
-        summary = PrivSignal.Config.Summary.build(config)
-        messages = PrivSignal.LLM.Prompt.build(diff, summary)
+      payload = File.read!("score.json") |> Jason.decode!()
 
-        request = fn _opts ->
-          {:ok,
-           %{
-             status: 200,
-             body: %{
-               "choices" => [
-                 %{
-                   "message" => %{
-                     "content" =>
-                       "{\"touched_flows\":[],\"new_pii\":[],\"new_sinks\":[],\"notes\":[]}"
-                   }
-                 }
-               ]
-             }
-           }}
-        end
-
-        System.put_env("PRIV_SIGNAL_MODEL_API_KEY", "key")
-
-        result =
-          with {:ok, diff} <- {:ok, diff},
-               {:ok, raw} <- PrivSignal.LLM.Client.request(messages, request: request),
-               {:ok, validated} <- PrivSignal.Analysis.Validator.validate(raw, diff) do
-            normalized = PrivSignal.Analysis.Normalizer.normalize(validated)
-            events = PrivSignal.Analysis.Events.from_payload(normalized)
-            PrivSignal.Risk.Assessor.assess(events, flows: config.flows)
-          end
-
-        markdown = PrivSignal.Output.Markdown.render(result)
-        json = PrivSignal.Output.JSON.render(result)
-
-        assert {:ok, _path} =
-                 PrivSignal.Output.Writer.write(markdown, json,
-                   json_path: "priv-signal.json",
-                   quiet: true
-                 )
-
-        assert File.exists?("priv-signal.json")
-      end)
-    after
-      System.delete_env("PRIV_SIGNAL_MODEL_API_KEY")
-    end
+      assert payload["score"] == "HIGH"
+      assert payload["points"] == 9
+      assert payload["llm_interpretation"] == nil
+    end)
   end
 
   defp sample_yaml do
@@ -87,20 +45,33 @@ defmodule Mix.Tasks.PrivSignal.ScoreIntegrationTest do
             category: contact
             sensitivity: medium
 
-    flows:
-      - id: config_load_chain
-        description: "Config load chain"
-        purpose: setup
-        pii_categories:
-          - config
-        path:
-          - module: PrivSignal.Config.Loader
-            function: load
-          - module: PrivSignal.Config.Schema
-            function: validate
-          - module: PrivSignal.Config
-            function: from_map
-        exits_system: false
+    flows: []
     """
+  end
+
+  defp sample_diff do
+    %{
+      version: "v1",
+      metadata: %{base_ref: "origin/main"},
+      summary: %{high: 1, medium: 1, low: 0, total: 2},
+      changes: [
+        %{
+          type: "flow_changed",
+          flow_id: "payments",
+          change: "external_sink_added",
+          severity: "high",
+          rule_id: "R-HIGH-EXTERNAL-SINK-ADDED",
+          details: %{}
+        },
+        %{
+          type: "flow_changed",
+          flow_id: "users",
+          change: "pii_fields_expanded",
+          severity: "medium",
+          rule_id: "R-MEDIUM-PII-EXPANDED",
+          details: %{added_fields: ["email"]}
+        }
+      ]
+    }
   end
 end

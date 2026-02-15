@@ -74,9 +74,7 @@ defmodule Mix.Tasks.PrivSignal.Scan do
   defp emit_summary(result, json_path) do
     summary = Map.get(result, :summary, %{})
 
-    Mix.shell().info(
-      "scan nodes: total=#{Map.get(summary, :node_count, 0)}"
-    )
+    Mix.shell().info("scan nodes: total=#{Map.get(summary, :node_count, 0)}")
     Mix.shell().info("scan flows: total=#{Map.get(summary, :flow_count, 0)}")
     Mix.shell().info("scan errors: #{Map.get(summary, :scan_error_count, 0)}")
     Mix.shell().info("scan lockfile written: #{json_path}")
