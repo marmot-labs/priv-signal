@@ -9,11 +9,7 @@ defmodule PrivSignal.Scan.Inventory do
             nodes_by_key: %{},
             nodes_by_module: %{},
             key_tokens: MapSet.new(),
-            token_nodes: %{},
-            # Backward-compatible aliases for scanner internals.
-            fields: [],
-            fields_by_module: %{},
-            token_fields: %{}
+            token_nodes: %{}
 
   def build(%Config{} = config) do
     data_nodes =
@@ -30,10 +26,7 @@ defmodule PrivSignal.Scan.Inventory do
           sensitive: node.sensitive == true,
           module: module_name,
           field: field_name,
-          # Alias fields retained for pre-existing scanner code paths.
           name: field_name,
-          category: normalize_class(node.class),
-          sensitivity: if(node.sensitive == true, do: "high", else: "medium"),
           reference: reference(module_name, field_name)
         }
       end)
@@ -68,10 +61,7 @@ defmodule PrivSignal.Scan.Inventory do
       nodes_by_key: nodes_by_key,
       nodes_by_module: nodes_by_module,
       key_tokens: MapSet.new(Map.keys(token_nodes)),
-      token_nodes: token_nodes,
-      fields: data_nodes,
-      fields_by_module: nodes_by_module,
-      token_fields: token_nodes
+      token_nodes: token_nodes
     }
   end
 
@@ -79,16 +69,8 @@ defmodule PrivSignal.Scan.Inventory do
     Map.get(inventory.token_nodes, normalize_token(token), [])
   end
 
-  def fields_for_token(%__MODULE__{} = inventory, token) do
-    nodes_for_token(inventory, token)
-  end
-
   def prd_module?(%__MODULE__{} = inventory, module_name) do
     MapSet.member?(inventory.modules, normalize_module(module_name))
-  end
-
-  def pii_module?(%__MODULE__{} = inventory, module_name) do
-    prd_module?(inventory, module_name)
   end
 
   def key_token?(%__MODULE__{} = inventory, token) do

@@ -3,7 +3,7 @@ defmodule PrivSignal.Scan.Classifier do
 
   alias PrivSignal.Scan.Finding
 
-  @confirmed_evidence_types [:direct_field_access, :key_match, :prd_container, :pii_container]
+  @confirmed_evidence_types [:direct_field_access, :key_match, :prd_container]
 
   def classify(candidates) when is_list(candidates) do
     candidates
@@ -16,7 +16,7 @@ defmodule PrivSignal.Scan.Classifier do
     evidence_types = Enum.map(candidate.evidence || [], & &1.type)
     classification = classification(evidence_types)
     confidence = confidence(classification)
-    matched_nodes = candidate.matched_nodes || candidate.matched_fields || []
+    matched_nodes = candidate.matched_nodes || []
 
     %Finding{
       id: fingerprint(candidate, evidence_types, matched_nodes),
@@ -36,7 +36,6 @@ defmodule PrivSignal.Scan.Classifier do
       boundary: Map.get(candidate, :boundary),
       sink: candidate.sink,
       matched_nodes: matched_nodes,
-      matched_fields: matched_nodes,
       evidence: candidate.evidence || []
     }
   end
@@ -67,7 +66,7 @@ defmodule PrivSignal.Scan.Classifier do
 
   defp data_classes(nodes) do
     nodes
-    |> Enum.map(&(Map.get(&1, :class) || Map.get(&1, :category)))
+    |> Enum.map(&Map.get(&1, :class))
     |> Enum.reject(&is_nil/1)
     |> Enum.map(&to_string/1)
     |> Enum.map(&String.trim/1)
@@ -85,28 +84,23 @@ defmodule PrivSignal.Scan.Classifier do
         "medium"
 
       true ->
-        node
-        |> Map.get(:sensitivity, "medium")
-        |> normalize_sensitivity()
+        "unknown"
     end
   end
-
-  defp normalize_sensitivity(value) when value in ["low", "medium", "high"], do: value
-  defp normalize_sensitivity(_), do: "unknown"
 
   defp sensitivity_rank("unknown"), do: 0
   defp sensitivity_rank("low"), do: 1
   defp sensitivity_rank("medium"), do: 2
   defp sensitivity_rank("high"), do: 3
 
-  defp fingerprint(candidate, evidence_types, matched_fields) do
+  defp fingerprint(candidate, evidence_types, matched_nodes) do
     sorted_types =
       evidence_types
       |> Enum.map(&Atom.to_string/1)
       |> Enum.sort()
 
     sorted_fields =
-      matched_fields
+      matched_nodes
       |> Enum.map(&field_key/1)
       |> Enum.sort()
 
@@ -134,9 +128,8 @@ defmodule PrivSignal.Scan.Classifier do
     module = Map.get(field, :module) || ""
     key = Map.get(field, :key) || ""
     name = Map.get(field, :field) || Map.get(field, :name) || ""
-    class = Map.get(field, :class) || Map.get(field, :category) || ""
-    sensitivity = Map.get(field, :sensitivity) || ""
+    class = Map.get(field, :class) || ""
     sensitive = Map.get(field, :sensitive)
-    Enum.join([module, key, name, class, sensitivity, inspect(sensitive)], "|")
+    Enum.join([module, key, name, class, inspect(sensitive)], "|")
   end
 end

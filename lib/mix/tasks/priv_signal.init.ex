@@ -81,23 +81,6 @@ defmodule Mix.Tasks.PrivSignal.Init do
       liveview:
         enabled: true
         additional_modules: []
-
-    flows:
-      - id: xapi_export
-        description: "User activity exported as xAPI statements"
-        purpose: analytics
-        pii_categories:
-          - user_id
-          - ip_address
-        path:
-          - module: MyAppWeb.ActivityController
-            function: submit
-          - module: MyApp.Analytics.XAPI
-            function: build_statement
-          - module: MyApp.Storage.S3
-            function: put_object
-        exits_system: true
-        third_party: "AWS S3"
     """
   end
 end

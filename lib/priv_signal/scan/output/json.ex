@@ -25,7 +25,6 @@ defmodule PrivSignal.Scan.Output.JSON do
       line: finding.line,
       sink: finding.sink,
       matched_nodes: finding.matched_nodes,
-      matched_fields: finding.matched_fields,
       evidence: Enum.map(finding.evidence || [], &render_evidence/1)
     }
   end

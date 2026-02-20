@@ -29,7 +29,7 @@ defmodule Mix.Tasks.PrivSignal.ScoreV2ContractTest do
       end
 
       assert_received {:mix_shell, :error, [message]}
-      assert String.contains?(message, "unsupported diff version v1")
+      assert String.contains?(message, "unsupported diff version")
     end)
   end
 
@@ -48,14 +48,14 @@ defmodule Mix.Tasks.PrivSignal.ScoreV2ContractTest do
     """
     version: 1
 
-    pii:
-      - module: PrivSignal.Config
-        fields:
-          - name: email
-            category: contact
-            sensitivity: medium
-
-    flows: []
+    prd_nodes:
+      - key: config_email
+        label: Config Email
+        class: direct_identifier
+        sensitive: true
+        scope:
+          module: PrivSignal.Config
+          field: email
     """
   end
 

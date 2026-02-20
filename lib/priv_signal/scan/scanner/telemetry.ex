@@ -63,7 +63,6 @@ defmodule PrivSignal.Scan.Scanner.Telemetry do
                 line: sink_line(node),
                 sink: sink,
                 matched_nodes: Evidence.matched_nodes(evidence),
-                matched_fields: Evidence.matched_nodes(evidence),
                 evidence: evidence,
                 role_kind: "telemetry",
                 boundary: "external"

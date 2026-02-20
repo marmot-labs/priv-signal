@@ -8,7 +8,7 @@ defmodule PrivSignal.Scan.Output.JSONTest do
   test "renders scanner result map with expected keys" do
     finding = %Finding{
       id: "abc123",
-      classification: :confirmed_pii,
+      classification: :confirmed_prd,
       confidence: :confirmed,
       sensitivity: :high,
       module: "MyApp.Auth",
@@ -17,14 +17,14 @@ defmodule PrivSignal.Scan.Output.JSONTest do
       file: "lib/my_app/auth.ex",
       line: 84,
       sink: "Logger.info",
-      matched_fields: [
-        %{module: "MyApp.User", name: "email", category: "contact", sensitivity: "high"}
+      matched_nodes: [
+        %{module: "MyApp.User", name: "email", class: "direct_identifier", sensitive: true}
       ],
       evidence: [
         %Evidence{
           type: :direct_field_access,
           expression: "user.email",
-          fields: [%{module: "MyApp.User", name: "email", sensitivity: "high"}]
+          fields: [%{module: "MyApp.User", name: "email", class: "direct_identifier", sensitive: true}]
         }
       ]
     }
@@ -50,7 +50,7 @@ defmodule PrivSignal.Scan.Output.JSONTest do
     assert json.summary.confirmed_count == 1
     assert json.inventory.field_count == 1
     assert length(json.findings) == 1
-    assert hd(json.findings).classification == :confirmed_pii
+    assert hd(json.findings).classification == :confirmed_prd
     assert hd(hd(json.findings).evidence).type == :direct_field_access
   end
 end

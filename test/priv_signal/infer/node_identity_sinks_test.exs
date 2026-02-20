@@ -6,7 +6,7 @@ defmodule PrivSignal.Infer.NodeIdentitySinksTest do
   test "node identity differs across phase4 role kinds" do
     base = %{
       node_type: "sink",
-      pii: [%{reference: "MyApp.User.email", category: "contact", sensitivity: "medium"}],
+      data_refs: [%{reference: "MyApp.User.email", class: "direct_identifier", sensitive: true}],
       code_context: %{
         module: "MyApp.Module",
         function: "run/1",
@@ -30,7 +30,7 @@ defmodule PrivSignal.Infer.NodeIdentitySinksTest do
   test "node type hint changes identity for database read source nodes" do
     sink_node = %{
       node_type: "sink",
-      pii: [%{reference: "MyApp.User.email"}],
+      data_refs: [%{reference: "MyApp.User.email", class: "direct_identifier", sensitive: true}],
       code_context: %{
         module: "MyApp.Module",
         function: "run/1",

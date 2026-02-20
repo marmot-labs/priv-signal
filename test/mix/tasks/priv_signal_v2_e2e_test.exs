@@ -97,8 +97,6 @@ defmodule Mix.Tasks.PrivSignalV2E2ETest do
           scope:
             module: Demo.User
             field: email
-
-      flows: []
       """
     )
   end

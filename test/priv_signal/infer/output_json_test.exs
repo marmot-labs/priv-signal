@@ -8,7 +8,7 @@ defmodule PrivSignal.Infer.Output.JSONTest do
     node = %Node{
       id: "psn_123",
       node_type: "sink",
-      pii: [%{reference: "MyApp.User.email", category: "contact", sensitivity: "medium"}],
+      data_refs: [%{reference: "MyApp.User.email", class: "direct_identifier", sensitive: true}],
       code_context: %{
         module: "MyApp.Accounts",
         function: "log_signup/2",
@@ -77,7 +77,7 @@ defmodule PrivSignal.Infer.Output.JSONTest do
         %{
           id: "psn_abc",
           node_type: "sink",
-          pii: [],
+          data_refs: [],
           code_context: %{},
           role: %{},
           confidence: 0.5,

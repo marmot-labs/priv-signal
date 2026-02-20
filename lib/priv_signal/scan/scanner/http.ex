@@ -66,7 +66,6 @@ defmodule PrivSignal.Scan.Scanner.HTTP do
               line: line,
               sink: sink,
               matched_nodes: matched_nodes,
-              matched_fields: matched_nodes,
               evidence: evidence,
               role_kind: "http",
               boundary: boundary,

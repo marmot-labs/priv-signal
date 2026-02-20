@@ -5,7 +5,6 @@ defmodule PrivSignal.Risk.Rules do
 
   def categorize(events, opts \\ []) when is_list(events) do
     config = %{
-      flows: Keyword.get(opts, :flows, []),
       sensitive_categories: Keyword.get(opts, :sensitive_categories, @sensitive_categories)
     }
 
@@ -18,8 +17,7 @@ defmodule PrivSignal.Risk.Rules do
   end
 
   defp high_risk?(events, config) do
-    new_outside_flows?(events, config) or
-      new_external_transfer?(events, config) or
+      new_external_transfer?(events) or
       sensitive_data?(events, config)
   end
 
@@ -32,10 +30,10 @@ defmodule PrivSignal.Risk.Rules do
     flow_touched?(events)
   end
 
-  defp new_external_transfer?(events, config) do
+  defp new_external_transfer?(events) do
     Enum.any?(events, fn event ->
       event.type == :new_sink and
-        normalize_string(event.sink) in third_party_sinks(config)
+        normalize_string(Map.get(event, :boundary)) == "external"
     end)
   end
 
@@ -51,23 +49,11 @@ defmodule PrivSignal.Risk.Rules do
     Enum.any?(events, &(&1.type == :flow_touched))
   end
 
-  defp new_outside_flows?(events, config) do
-    new_pii?(events) and not flow_touched?(events) and config.flows != []
-  end
-
   defp sensitive_data?(events, config) do
     Enum.any?(events, fn event ->
       event.type == :new_pii and
         normalize_string(event.pii_category) in config.sensitive_categories
     end)
-  end
-
-  defp third_party_sinks(config) do
-    config.flows
-    |> Enum.filter(&(&1.exits_system && &1.third_party))
-    |> Enum.map(&normalize/1)
-    |> Enum.map(& &1.third_party)
-    |> Enum.reject(&is_nil/1)
   end
 
   defp reasons(events, config) do
@@ -82,13 +68,6 @@ defmodule PrivSignal.Risk.Rules do
       if new_internal_sink?(events), do: ["Introduces new sink/export" | reasons], else: reasons
 
     reasons =
-      if new_outside_flows?(events, config) do
-        ["New PII usage outside defined flows" | reasons]
-      else
-        reasons
-      end
-
-    reasons =
       if sensitive_data?(events, config) do
         ["Sensitive data categories detected" | reasons]
       else
@@ -96,17 +75,13 @@ defmodule PrivSignal.Risk.Rules do
       end
 
     reasons =
-      if new_external_transfer?(events, config) do
+      if new_external_transfer?(events) do
         ["New third-party transfer" | reasons]
       else
         reasons
       end
 
     Enum.reverse(reasons)
-  end
-
-  defp normalize(flow) do
-    %{flow | third_party: normalize_string(flow.third_party)}
   end
 
   defp normalize_string(nil), do: nil

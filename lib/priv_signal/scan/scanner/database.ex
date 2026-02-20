@@ -52,7 +52,6 @@ defmodule PrivSignal.Scan.Scanner.Database do
               line: sink_line(node),
               sink: sink,
               matched_nodes: Evidence.matched_nodes(evidence),
-              matched_fields: Evidence.matched_nodes(evidence),
               evidence: evidence,
               role_kind: kind,
               node_type_hint: if(kind == "database_read", do: "source", else: "sink"),

@@ -14,8 +14,8 @@ defmodule PrivSignal.Infer.ScannerAdapterTest do
         line: 10,
         role_kind: "http",
         sink: "Req.post",
-        matched_fields: [
-          %{module: "MyApp.User", name: "email", category: "contact", sensitivity: "high"}
+        matched_nodes: [
+          %{module: "MyApp.User", name: "email", class: "direct_identifier", sensitive: true}
         ],
         evidence: [%{type: :direct_field_access}],
         confidence_hint: 0.8
@@ -30,8 +30,8 @@ defmodule PrivSignal.Infer.ScannerAdapterTest do
         role_kind: "database_read",
         node_type_hint: "source",
         sink: "Repo.get",
-        matched_fields: [
-          %{module: "MyApp.User", name: "email", category: "contact", sensitivity: "high"}
+        matched_nodes: [
+          %{module: "MyApp.User", name: "email", class: "direct_identifier", sensitive: true}
         ],
         evidence: [%{type: :key_match}],
         confidence_hint: 1.0
@@ -45,8 +45,8 @@ defmodule PrivSignal.Infer.ScannerAdapterTest do
         line: 15,
         role_kind: "liveview_render",
         sink: "assign",
-        matched_fields: [
-          %{module: "MyApp.User", name: "email", category: "contact", sensitivity: "high"}
+        matched_nodes: [
+          %{module: "MyApp.User", name: "email", class: "direct_identifier", sensitive: true}
         ],
         evidence: [%{type: :token_match}],
         confidence_hint: 0.7

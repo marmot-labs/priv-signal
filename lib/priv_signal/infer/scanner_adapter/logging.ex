@@ -121,7 +121,7 @@ defmodule PrivSignal.Infer.ScannerAdapter.Logging do
 
   defp data_refs_from_finding(finding) do
     finding
-    |> Map.get(:matched_nodes, Map.get(finding, :matched_fields, []))
+    |> Map.get(:matched_nodes, [])
     |> Enum.map(fn node ->
       module = Map.get(node, :module)
       field = Map.get(node, :field) || Map.get(node, :name)
@@ -130,13 +130,8 @@ defmodule PrivSignal.Infer.ScannerAdapter.Logging do
         reference: data_reference(module, field),
         key: Map.get(node, :key),
         label: Map.get(node, :label),
-        class: Map.get(node, :class) || Map.get(node, :category),
-        sensitive:
-          case Map.get(node, :sensitive) do
-            true -> true
-            false -> false
-            _ -> Map.get(node, :sensitivity) in ["high", "medium"]
-          end
+        class: Map.get(node, :class),
+        sensitive: Map.get(node, :sensitive) == true
       }
     end)
   end
@@ -197,7 +192,6 @@ defmodule PrivSignal.Infer.ScannerAdapter.Logging do
   defp ast_kind(:direct_field_access), do: "field_access"
   defp ast_kind(:key_match), do: "key_match"
   defp ast_kind(:prd_container), do: "struct"
-  defp ast_kind(:pii_container), do: "struct"
   defp ast_kind(:bulk_inspect), do: "call"
   defp ast_kind(:token_match), do: "token"
   defp ast_kind(_), do: "unknown"

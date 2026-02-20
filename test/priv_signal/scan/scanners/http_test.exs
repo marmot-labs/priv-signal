@@ -24,7 +24,7 @@ defmodule PrivSignal.Scan.Scanners.HTTPTest do
     assert finding.role_kind == "http"
     assert finding.boundary == "external"
     assert finding.sink == "Req.post"
-    assert Enum.any?(finding.matched_fields, &(&1.name == "email"))
+    assert Enum.any?(finding.matched_nodes, &(&1.name == "email"))
   end
 
   test "classifies configured internal domain as internal boundary" do

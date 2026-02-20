@@ -23,7 +23,7 @@ defmodule PrivSignal.Scan.LoggerTest do
     assert finding.sink == "Logger.info"
     assert finding.line == 5
     assert Enum.any?(finding.evidence, &(&1.type == :direct_field_access))
-    assert Enum.any?(finding.matched_fields, &(&1.name == "email"))
+    assert Enum.any?(finding.matched_nodes, &(&1.name == "email"))
   end
 
   test "detects possible bulk inspect logging pattern" do
@@ -51,7 +51,7 @@ defmodule PrivSignal.Scan.LoggerTest do
     assert {:ok, findings} = Logger.scan_file(path, inventory)
     assert length(findings) == 1
     assert hd(findings).sink == ":logger.info"
-    assert Enum.any?(hd(findings).matched_fields, &(&1.name == "email"))
+    assert Enum.any?(hd(findings).matched_nodes, &(&1.name == "email"))
   end
 
   defp fixture_inventory do

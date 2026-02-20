@@ -31,12 +31,11 @@ defmodule PrivSignal.Risk.RulesTest do
     assert "Introduces new PII categories" in reasons
   end
 
-  test "high when new pii outside flows" do
-    flows = [%{exits_system: false, third_party: nil}]
+  test "medium when new pii without sensitive category" do
     events = [event(:new_pii, "email")]
 
-    assert {:high, reasons} = Rules.categorize(events, flows: flows)
-    assert "New PII usage outside defined flows" in reasons
+    assert {:medium, reasons} = Rules.categorize(events)
+    assert "Introduces new PII categories" in reasons
   end
 
   test "high when sensitive data" do
@@ -45,11 +44,10 @@ defmodule PrivSignal.Risk.RulesTest do
     assert "Sensitive data categories detected" in reasons
   end
 
-  test "high when new third-party transfer" do
-    flows = [%{exits_system: true, third_party: "AWS S3"}]
+  test "medium when new sink lacks explicit external boundary signal" do
     events = [event(:new_sink, "aws s3")]
 
-    assert {:high, reasons} = Rules.categorize(events, flows: flows)
-    assert "New third-party transfer" in reasons
+    assert {:medium, reasons} = Rules.categorize(events)
+    assert "Introduces new sink/export" in reasons
   end
 end

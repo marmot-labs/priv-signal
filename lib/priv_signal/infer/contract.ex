@@ -4,7 +4,6 @@ defmodule PrivSignal.Infer.Contract do
   alias PrivSignal.Infer.NodeNormalizer
 
   @schema_version "1"
-  @supported_schema_versions MapSet.new(["1"])
   @node_types MapSet.new(["entrypoint", "source", "sink", "transform"])
   @boundaries MapSet.new(["internal", "external"])
   @data_classes MapSet.new([
@@ -16,13 +15,6 @@ defmodule PrivSignal.Infer.Contract do
                 ])
 
   def schema_version, do: @schema_version
-  def supported_schema_versions, do: MapSet.to_list(@supported_schema_versions)
-
-  def compatible_schema_version?(schema_version) when is_binary(schema_version) do
-    MapSet.member?(@supported_schema_versions, schema_version)
-  end
-
-  def compatible_schema_version?(_), do: false
 
   def required_artifact_keys(_schema_version \\ @schema_version),
     do: [:schema_version, :tool, :git, :summary, :data_nodes, :flows, :errors]
@@ -52,7 +44,7 @@ defmodule PrivSignal.Infer.Contract do
     required_keys = required_artifact_keys(schema_version)
 
     required_artifact_keys_present?(artifact, required_keys) and
-      compatible_schema_version?(schema_version) and
+      schema_version == @schema_version and
       is_list(get(artifact, :data_nodes)) and
       Enum.all?(get(artifact, :data_nodes), &valid_data_node?/1) and
       is_list(Map.get(artifact, :nodes, Map.get(artifact, "nodes", []))) and

@@ -151,7 +151,7 @@ defmodule PrivSignal.Infer.FlowBuilder do
     nodes
     |> Enum.flat_map(fn node ->
       node
-      |> Map.get(:data_refs, Map.get(node, :pii, Map.get(node, "pii", [])))
+      |> Map.get(:data_refs, [])
       |> Enum.map(&normalize_data_ref/1)
     end)
     |> Enum.reject(&is_nil(&1.reference))
@@ -163,7 +163,7 @@ defmodule PrivSignal.Infer.FlowBuilder do
 
   defp direct_reference?(sink, reference) do
     sink
-    |> Map.get(:data_refs, Map.get(sink, :pii, []))
+    |> Map.get(:data_refs, [])
     |> Enum.any?(fn data_ref ->
       (Map.get(data_ref, :reference) || Map.get(data_ref, "reference")) == reference
     end)
@@ -176,7 +176,7 @@ defmodule PrivSignal.Infer.FlowBuilder do
 
   defp node_has_reference?(node, reference) do
     node
-    |> Map.get(:data_refs, Map.get(node, :pii, []))
+    |> Map.get(:data_refs, [])
     |> Enum.any?(fn data_ref ->
       (Map.get(data_ref, :reference) || Map.get(data_ref, "reference")) == reference
     end)

@@ -146,8 +146,6 @@ defmodule Mix.Tasks.PrivSignal.ScanTest do
         scope:
           module: Demo.User
           field: email
-
-    flows: []
     """
   end
 
@@ -158,8 +156,6 @@ defmodule Mix.Tasks.PrivSignal.ScanTest do
     pii_modules:
       - Demo.User
     prd_nodes: []
-
-    flows: []
     """
   end
 

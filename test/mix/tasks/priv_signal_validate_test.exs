@@ -1,7 +1,7 @@
 defmodule Mix.Tasks.PrivSignal.ValidateTest do
   use ExUnit.Case
 
-  test "mix priv_signal.validate succeeds on valid flows" do
+  test "mix priv_signal.validate succeeds on valid prd scope modules" do
     tmp_dir =
       Path.join(System.tmp_dir!(), "priv_signal_validate_#{System.unique_integer([:positive])}")
 
@@ -14,27 +14,7 @@ defmodule Mix.Tasks.PrivSignal.ValidateTest do
       Mix.Tasks.PrivSignal.Validate.run([])
 
       assert_received {:mix_shell, :info, ["priv-signal.yml is valid"]}
-      assert_received {:mix_shell, :info, ["data flow validation: ok"]}
-    end)
-  end
-
-  test "mix priv_signal.validate fails on invalid flows" do
-    tmp_dir =
-      Path.join(System.tmp_dir!(), "priv_signal_validate_#{System.unique_integer([:positive])}")
-
-    File.mkdir_p!(tmp_dir)
-
-    File.cd!(tmp_dir, fn ->
-      File.write!("priv-signal.yml", failing_yaml())
-
-      Mix.shell(Mix.Shell.Process)
-
-      assert_raise Mix.Error, ~r/data flow validation failed/, fn ->
-        Mix.Tasks.PrivSignal.Validate.run([])
-      end
-
-      errors = collect_errors([])
-      assert Enum.any?(errors, &String.contains?(&1, "missing function"))
+      assert_received {:mix_shell, :info, ["config validation: ok"]}
     end)
   end
 
@@ -49,7 +29,7 @@ defmodule Mix.Tasks.PrivSignal.ValidateTest do
 
       Mix.shell(Mix.Shell.Process)
 
-      assert_raise Mix.Error, ~r/data flow validation failed/, fn ->
+      assert_raise Mix.Error, ~r/config validation failed/, fn ->
         Mix.Tasks.PrivSignal.Validate.run([])
       end
 
@@ -58,7 +38,7 @@ defmodule Mix.Tasks.PrivSignal.ValidateTest do
     end)
   end
 
-  test "mix priv_signal.validate fails with deprecated pii_modules config" do
+  test "mix priv_signal.validate fails with unsupported pii_modules config" do
     tmp_dir =
       Path.join(System.tmp_dir!(), "priv_signal_validate_#{System.unique_integer([:positive])}")
 
@@ -69,12 +49,12 @@ defmodule Mix.Tasks.PrivSignal.ValidateTest do
 
       Mix.shell(Mix.Shell.Process)
 
-      assert_raise Mix.Error, ~r/data flow validation failed/, fn ->
+      assert_raise Mix.Error, ~r/config validation failed/, fn ->
         Mix.Tasks.PrivSignal.Validate.run([])
       end
 
       errors = collect_errors([])
-      assert Enum.any?(errors, &String.contains?(&1, "pii_modules is unsupported"))
+      assert Enum.any?(errors, &String.contains?(&1, "pii_modules is unsupported in v1"))
     end)
   end
 
@@ -90,49 +70,6 @@ defmodule Mix.Tasks.PrivSignal.ValidateTest do
         scope:
           module: PrivSignal.Config
           field: email
-
-    flows:
-      - id: config_load_chain
-        description: "Config load chain"
-        purpose: setup
-        pii_categories:
-          - config
-        path:
-          - module: PrivSignal.Config.Loader
-            function: load
-          - module: PrivSignal.Config.Schema
-            function: validate
-          - module: PrivSignal.Config
-            function: from_map
-        exits_system: false
-    """
-  end
-
-  defp failing_yaml do
-    """
-    version: 1
-
-    prd_nodes:
-      - key: config_email
-        label: Config Email
-        class: direct_identifier
-        sensitive: true
-        scope:
-          module: PrivSignal.Config
-          field: email
-
-    flows:
-      - id: config_load_chain
-        description: "Broken chain"
-        purpose: setup
-        pii_categories:
-          - config
-        path:
-          - module: PrivSignal.Config.Loader
-            function: load
-          - module: PrivSignal.Config
-            function: missing_function
-        exits_system: false
     """
   end
 
@@ -146,21 +83,8 @@ defmodule Mix.Tasks.PrivSignal.ValidateTest do
         class: direct_identifier
         sensitive: true
         scope:
-          module: Missing.PII.Module
+          module: Missing.PRD.Module
           field: email
-
-    flows:
-      - id: config_load_chain
-        description: "Config load chain"
-        purpose: setup
-        pii_categories:
-          - config
-        path:
-          - module: PrivSignal.Config.Loader
-            function: load
-          - module: PrivSignal.Config
-            function: from_map
-        exits_system: false
     """
   end
 
@@ -171,8 +95,6 @@ defmodule Mix.Tasks.PrivSignal.ValidateTest do
     pii_modules:
       - PrivSignal.Config
     prd_nodes: []
-
-    flows: []
     """
   end
 

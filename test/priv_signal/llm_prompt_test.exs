@@ -8,14 +8,16 @@ defmodule PrivSignal.LLM.PromptTest do
 
     summary = %{
       version: 1,
-      pii: [
+      prd_nodes: [
         %{
-          module: "MyApp.User",
-          fields: [%{name: "email", category: "contact", sensitivity: "medium"}]
+          key: "user_email",
+          label: "User Email",
+          class: "direct_identifier",
+          sensitive: true,
+          scope: %{module: "MyApp.User", field: "email"}
         }
       ],
-      pii_modules: ["MyApp.User"],
-      flows: []
+      prd_modules: ["MyApp.User"]
     }
 
     messages = Prompt.build(diff, summary)

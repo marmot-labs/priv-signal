@@ -24,7 +24,7 @@ defmodule PrivSignal.Scan.Scanners.ControllerTest do
     assert finding.role_kind == "http_response"
     assert finding.boundary == "external"
     assert finding.sink == "json"
-    assert Enum.any?(finding.matched_fields, &(&1.name == "email"))
+    assert Enum.any?(finding.matched_nodes, &(&1.name == "email"))
   end
 
   defp fixture_inventory do

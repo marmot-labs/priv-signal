@@ -71,8 +71,6 @@ defmodule Mix.Tasks.PrivSignal.ScanSinksIntegrationTest do
         liveview:
           enabled: true
           additional_modules: []
-
-      flows: []
       """
     )
   end

@@ -1,5 +1,5 @@
 defmodule PrivSignal.Score.AdvisoryTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   alias PrivSignal.Score.Advisory
 

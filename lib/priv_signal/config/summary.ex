@@ -9,8 +9,7 @@ defmodule PrivSignal.Config.Summary do
       version: config.version,
       prd_nodes: Enum.map(PRD.entries(config), &prd_node_summary/1),
       prd_modules: PRD.modules(config),
-      scanners: scanners_summary(config),
-      flows: Enum.map(config.flows, &flow_summary/1)
+      scanners: scanners_summary(config)
     }
   end
 
@@ -24,25 +23,6 @@ defmodule PrivSignal.Config.Summary do
         module: entry.scope && entry.scope.module,
         field: entry.scope && entry.scope.field
       }
-    }
-  end
-
-  defp flow_summary(flow) do
-    %{
-      id: flow.id,
-      description: flow.description,
-      purpose: flow.purpose,
-      pii_categories: flow.pii_categories,
-      exits_system: flow.exits_system,
-      third_party: flow.third_party,
-      path: Enum.map(flow.path, &path_summary/1)
-    }
-  end
-
-  defp path_summary(step) do
-    %{
-      module: step.module,
-      function: step.function
     }
   end
 

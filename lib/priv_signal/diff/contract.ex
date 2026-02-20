@@ -1,14 +1,12 @@
 defmodule PrivSignal.Diff.Contract do
   @moduledoc false
 
-  @supported_schema_versions MapSet.new(["1"])
+  @schema_version "1"
   @required_artifact_keys [:schema_version, :data_nodes, :flows]
   @required_flow_keys [:id, :source, :entrypoint, :sink, :boundary]
   @required_data_node_keys [:key, :name, :class, :sensitive, :scope]
   @optional_artifact_keys [:nodes]
   @optional_flow_keys [:confidence, :evidence, :source_key, :source_class, :source_sensitive]
-
-  def supported_schema_versions, do: MapSet.to_list(@supported_schema_versions)
 
   def validate(artifact, opts \\ []) do
     strict? = Keyword.get(opts, :strict, false)
@@ -44,12 +42,10 @@ defmodule PrivSignal.Diff.Contract do
   defp validate_schema_version(artifact) do
     case get(artifact, :schema_version) do
       version when is_binary(version) ->
-        if MapSet.member?(@supported_schema_versions, version) do
+        if version == @schema_version do
           {:ok, version}
         else
-          {:error,
-           {:unsupported_schema_version,
-            %{schema_version: version, supported: supported_schema_versions()}}}
+          {:error, {:unsupported_schema_version, %{schema_version: version, supported: ["1"]}}}
         end
 
       _ ->

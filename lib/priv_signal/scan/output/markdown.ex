@@ -38,7 +38,7 @@ defmodule PrivSignal.Scan.Output.Markdown do
     location =
       "#{finding.module}.#{finding.function}/#{finding.arity} (#{normalize_file_path(finding.file)}:#{finding.line})"
 
-    nodes = finding.matched_nodes || finding.matched_fields || []
+    nodes = finding.matched_nodes || []
 
     fields =
       Enum.map_join(nodes, ", ", fn node ->

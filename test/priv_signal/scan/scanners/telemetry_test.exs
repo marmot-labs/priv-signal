@@ -24,7 +24,7 @@ defmodule PrivSignal.Scan.Scanners.TelemetryTest do
     assert finding.role_kind == "telemetry"
     assert finding.boundary == "external"
     assert finding.sink == ":telemetry.execute"
-    assert Enum.any?(finding.matched_fields, &(&1.name == "email"))
+    assert Enum.any?(finding.matched_nodes, &(&1.name == "email"))
   end
 
   defp fixture_inventory do

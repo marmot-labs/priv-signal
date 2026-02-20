@@ -28,16 +28,6 @@ defmodule PrivSignal.ConfigSchemaScannersTest do
           "scope" => %{"module" => "MyApp.Accounts.User", "field" => "email"}
         }
       ],
-      "flows" => [
-        %{
-          "id" => "f1",
-          "description" => "d",
-          "purpose" => "p",
-          "pii_categories" => ["contact"],
-          "path" => [%{"module" => "MyApp.Accounts", "function" => "update_user"}],
-          "exits_system" => false
-        }
-      ],
       "scanners" => %{
         "logging" => %{"enabled" => true, "additional_modules" => ["MyApp.Logging"]},
         "http" => %{
@@ -77,7 +67,6 @@ defmodule PrivSignal.ConfigSchemaScannersTest do
           "scope" => %{"module" => "MyApp.Accounts.User", "field" => "email"}
         }
       ],
-      "flows" => [],
       "scanners" => %{
         "logging" => %{"enabled" => "yes", "additional_modules" => "MyApp.Logging"},
         "http" => %{"enabled" => "yes", "additional_modules" => "MyApp.HTTP"},

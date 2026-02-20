@@ -90,7 +90,6 @@ defmodule PrivSignal.Scan.Scanner.Logging do
         line: line,
         sink: sink,
         matched_nodes: matched_nodes,
-        matched_fields: matched_nodes,
         evidence: evidence
       }
 
@@ -147,13 +146,13 @@ defmodule PrivSignal.Scan.Scanner.Logging do
 
   defp fields_for_node({{:., _, [_receiver, field]}, _, []}, %Inventory{} = inventory)
        when is_atom(field) do
-    Inventory.fields_for_token(inventory, field)
+    Inventory.nodes_for_token(inventory, field)
   end
 
   defp fields_for_node({:%{}, _, pairs}, %Inventory{} = inventory) when is_list(pairs) do
     pairs
     |> Enum.flat_map(fn
-      {key, _value} -> Inventory.fields_for_token(inventory, key)
+      {key, _value} -> Inventory.nodes_for_token(inventory, key)
       _ -> []
     end)
   end
@@ -165,7 +164,7 @@ defmodule PrivSignal.Scan.Scanner.Logging do
 
       pairs ->
         Enum.flat_map(pairs, fn {key, _value} ->
-          Inventory.fields_for_token(inventory, key)
+          Inventory.nodes_for_token(inventory, key)
         end)
     end
   end
@@ -256,7 +255,7 @@ defmodule PrivSignal.Scan.Scanner.Logging do
   end
 
   defp pseudo_fields(%Inventory{} = inventory) do
-    case inventory.fields do
+    case inventory.data_nodes do
       [] -> []
       fields -> [hd(fields)]
     end

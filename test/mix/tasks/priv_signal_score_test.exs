@@ -35,19 +35,21 @@ defmodule Mix.Tasks.PrivSignal.ScoreTest do
     end)
   end
 
-  test "scores without requiring flows in config" do
+  test "scores with minimal prd_nodes config" do
     with_tmp_dir(fn ->
       File.write!(
         "priv-signal.yml",
         """
         version: 1
 
-        pii:
-          - module: PrivSignal.Config
-            fields:
-              - name: email
-                category: contact
-                sensitivity: medium
+        prd_nodes:
+          - key: config_email
+            label: Config Email
+            class: direct_identifier
+            sensitive: true
+            scope:
+              module: PrivSignal.Config
+              field: email
         """
       )
 
@@ -109,27 +111,14 @@ defmodule Mix.Tasks.PrivSignal.ScoreTest do
     """
     version: 1
 
-    pii:
-      - module: PrivSignal.Config
-        fields:
-          - name: email
-            category: contact
-            sensitivity: medium
-
-    flows:
-      - id: config_load_chain
-        description: "Config load chain"
-        purpose: setup
-        pii_categories:
-          - config
-        path:
-          - module: PrivSignal.Config.Loader
-            function: load
-          - module: PrivSignal.Config.Schema
-            function: validate
-          - module: PrivSignal.Config
-            function: from_map
-        exits_system: false
+    prd_nodes:
+      - key: config_email
+        label: Config Email
+        class: direct_identifier
+        sensitive: true
+        scope:
+          module: PrivSignal.Config
+          field: email
     """
   end
 

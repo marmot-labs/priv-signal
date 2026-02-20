@@ -4,21 +4,19 @@ defmodule PrivSignal.Config.Schema do
   alias PrivSignal.Config
   alias PrivSignal.Config.PRD
 
-  @required_flow_keys [:id, :description, :purpose, :pii_categories, :path, :exits_system]
-  @required_path_keys [:module, :function]
+  @unsupported_keys [:pii_modules, :pii, :flows]
   @scanner_categories [:logging, :http, :controller, :telemetry, :database, :liveview]
 
   def validate(map, opts \\ [])
 
   def validate(map, opts) when is_map(map) and is_list(opts) do
-    mode = Keyword.get(opts, :mode, :default)
+    _ = opts
     errors = []
     errors = validate_version(map, errors)
-    errors = reject_legacy_pii(map, errors, mode)
-    errors = validate_prd_nodes(map, errors, mode)
-    errors = validate_flows(map, errors, mode)
+    errors = validate_unsupported_keys(map, errors)
+    errors = validate_prd_nodes(map, errors)
     errors = validate_scanners(map, errors)
-    errors = validate_scoring(map, errors, mode)
+    errors = validate_scoring(map, errors)
 
     if errors == [] do
       {:ok, Config.from_map(map)}
@@ -42,27 +40,20 @@ defmodule PrivSignal.Config.Schema do
     end
   end
 
-  defp reject_legacy_pii(_map, errors, :score), do: errors
-
-  defp reject_legacy_pii(map, errors, _mode) do
-    errors =
-      if Map.has_key?(map, :pii_modules) or Map.has_key?(map, "pii_modules") do
-        ["pii_modules is unsupported in v1; use prd_nodes" | errors]
+  defp validate_unsupported_keys(map, errors) do
+    Enum.reduce(@unsupported_keys, errors, fn key, acc ->
+      if Map.has_key?(map, key) or Map.has_key?(map, Atom.to_string(key)) do
+        ["#{key} is unsupported in v1" | acc]
       else
-        errors
+        acc
       end
-
-    if Map.has_key?(map, :pii) or Map.has_key?(map, "pii") do
-      ["pii is unsupported in v1; use prd_nodes" | errors]
-    else
-      errors
-    end
+    end)
   end
 
-  defp validate_prd_nodes(map, errors, mode) do
+  defp validate_prd_nodes(map, errors) do
     case get(map, :prd_nodes) do
       nil ->
-        if mode == :score, do: errors, else: ["prd_nodes is required" | errors]
+        ["prd_nodes is required" | errors]
 
       list when is_list(list) ->
         errors
@@ -173,99 +164,6 @@ defmodule PrivSignal.Config.Schema do
     else
       ["prd_nodes keys must be unique" | errors]
     end
-  end
-
-  defp validate_flows(map, errors, mode) do
-    case get(map, :flows) do
-      nil ->
-        if mode == :score do
-          errors
-        else
-          ["flows is required" | errors]
-        end
-
-      list when is_list(list) ->
-        Enum.reduce(Enum.with_index(list), errors, fn {flow, idx}, acc ->
-          validate_flow(flow, idx, acc)
-        end)
-
-      _ ->
-        ["flows must be a list" | errors]
-    end
-  end
-
-  defp validate_flow(flow, idx, errors) when is_map(flow) do
-    errors =
-      Enum.reduce(@required_flow_keys, errors, fn key, acc ->
-        case get(flow, key) do
-          nil -> ["flows[#{idx}].#{key} is required" | acc]
-          _ -> acc
-        end
-      end)
-
-    errors = validate_flow_types(flow, idx, errors)
-    errors = validate_flow_path(flow, idx, errors)
-    errors
-  end
-
-  defp validate_flow(_, idx, errors), do: ["flows[#{idx}] must be a map" | errors]
-
-  defp validate_flow_types(flow, idx, errors) do
-    errors =
-      case get(flow, :id) do
-        value when is_binary(value) and value != "" -> errors
-        _ -> ["flows[#{idx}].id must be a non-empty string" | errors]
-      end
-
-    errors =
-      case get(flow, :pii_categories) do
-        list ->
-          if list_of_strings?(list),
-            do: errors,
-            else: ["flows[#{idx}].pii_categories must be a list of strings" | errors]
-      end
-
-    case get(flow, :exits_system) do
-      value when is_boolean(value) -> errors
-      _ -> ["flows[#{idx}].exits_system must be a boolean" | errors]
-    end
-  end
-
-  defp validate_flow_path(flow, idx, errors) do
-    case get(flow, :path) do
-      list when is_list(list) ->
-        Enum.reduce(Enum.with_index(list), errors, fn {step, sidx}, acc ->
-          validate_path_step(step, idx, sidx, acc)
-        end)
-
-      _ ->
-        ["flows[#{idx}].path must be a list" | errors]
-    end
-  end
-
-  defp validate_path_step(step, fidx, sidx, errors) when is_map(step) do
-    errors =
-      Enum.reduce(@required_path_keys, errors, fn key, acc ->
-        case get(step, key) do
-          nil -> ["flows[#{fidx}].path[#{sidx}].#{key} is required" | acc]
-          _ -> acc
-        end
-      end)
-
-    errors =
-      case get(step, :module) do
-        value when is_binary(value) and value != "" -> errors
-        _ -> ["flows[#{fidx}].path[#{sidx}].module must be a string" | errors]
-      end
-
-    case get(step, :function) do
-      value when is_binary(value) and value != "" -> errors
-      _ -> ["flows[#{fidx}].path[#{sidx}].function must be a string" | errors]
-    end
-  end
-
-  defp validate_path_step(_, fidx, sidx, errors) do
-    ["flows[#{fidx}].path[#{sidx}] must be a map" | errors]
   end
 
   defp validate_scanners(map, errors) do
@@ -399,42 +297,19 @@ defmodule PrivSignal.Config.Schema do
     end
   end
 
-  defp validate_scoring(map, errors, mode) do
+  defp validate_scoring(map, errors) do
     case get(map, :scoring) do
       nil ->
         errors
 
       scoring when is_map(scoring) ->
-        if mode == :score do
-          errors
-          |> reject_legacy_scoring_weights(scoring)
-          |> reject_legacy_scoring_thresholds(scoring)
-          |> validate_scoring_llm_interpretation(scoring)
-        else
-          errors
-          |> validate_scoring_weights(scoring)
-          |> validate_scoring_thresholds(scoring)
-          |> validate_scoring_llm_interpretation(scoring)
-        end
+        errors
+        |> validate_scoring_weights(scoring)
+        |> validate_scoring_thresholds(scoring)
+        |> validate_scoring_llm_interpretation(scoring)
 
       _ ->
         ["scoring must be a map" | errors]
-    end
-  end
-
-  defp reject_legacy_scoring_weights(errors, scoring) do
-    if not is_nil(get(scoring, :weights)) do
-      ["scoring.weights is unsupported for score v2" | errors]
-    else
-      errors
-    end
-  end
-
-  defp reject_legacy_scoring_thresholds(errors, scoring) do
-    if not is_nil(get(scoring, :thresholds)) do
-      ["scoring.thresholds is unsupported for score v2" | errors]
-    else
-      errors
     end
   end
 
@@ -566,7 +441,4 @@ defmodule PrivSignal.Config.Schema do
     end)
   end
 
-  defp list_of_strings?(value) do
-    is_list(value) and Enum.all?(value, &is_binary/1)
-  end
 end

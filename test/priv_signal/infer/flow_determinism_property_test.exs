@@ -19,7 +19,7 @@ defmodule PrivSignal.Infer.FlowDeterminismPropertyTest do
       %{
         id: "psn_2",
         node_type: "sink",
-        pii: [%{reference: "MyApp.User.email"}],
+        data_refs: [%{reference: "MyApp.User.email", class: "direct_identifier", sensitive: true}],
         code_context: %{
           module: "MyAppWeb.UserController",
           function: "create/2",
@@ -32,7 +32,7 @@ defmodule PrivSignal.Infer.FlowDeterminismPropertyTest do
       %{
         id: "psn_1",
         node_type: "sink",
-        pii: [%{reference: "MyApp.User.phone"}],
+        data_refs: [%{reference: "MyApp.User.phone", class: "direct_identifier", sensitive: true}],
         code_context: %{
           module: "MyAppWeb.UserController",
           function: "create/2",

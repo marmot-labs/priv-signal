@@ -6,7 +6,9 @@ defmodule PrivSignal.Infer.SinksAdapterContractTest do
   test "node identity remains deterministic for phase4 role kinds" do
     base_node = %{
       node_type: "sink",
-      pii: [%{reference: "MyApp.Accounts.User.email", category: "contact", sensitivity: "medium"}],
+      data_refs: [
+        %{reference: "MyApp.Accounts.User.email", class: "direct_identifier", sensitive: true}
+      ],
       code_context: %{
         module: "MyApp.Module",
         function: "run/1",

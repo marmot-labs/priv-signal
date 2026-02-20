@@ -1,7 +1,7 @@
 # PrivSignal
 
 PrivSignal is an open-source Elixir CLI that scores privacy risk for PR diffs
-using a project-defined map of privacy-relevant data flows.
+using a project-defined inventory of privacy-relevant identifiers.
 
 ## Quickstart
 
@@ -20,15 +20,28 @@ PrivSignal uses a repo-root `priv-signal.yml` file as the source of truth. Examp
 ```yaml
 version: 1
 
-pii:
-  - module: MyApp.Accounts.User
-    fields:
-      - name: email
-        category: contact
-        sensitivity: medium
-      - name: user_id
-        category: identifier
-        sensitivity: low
+prd_nodes:
+  - key: user_email
+    label: User Email
+    class: direct_identifier
+    sensitive: true
+    scope:
+      module: MyApp.Accounts.User
+      field: email
+  - key: user_id
+    label: User ID
+    class: persistent_pseudonymous_identifier
+    sensitive: false
+    scope:
+      module: MyApp.Accounts.User
+      field: user_id
+  - key: engagement_score
+    label: Engagement Score
+    class: inferred_attribute
+    sensitive: false
+    scope:
+      module: MyApp.Analytics.UserProfile
+      field: engagement_score
 
 scanners:
   logging:
@@ -51,23 +64,6 @@ scanners:
   liveview:
     enabled: true
     additional_modules: []
-
-flows:
-  - id: xapi_export
-    description: "User activity exported as xAPI statements"
-    purpose: analytics
-    pii_categories:
-      - user_id
-      - ip_address
-    path:
-      - module: MyAppWeb.ActivityController
-        function: submit
-      - module: MyApp.Analytics.XAPI
-        function: build_statement
-      - module: MyApp.Storage.S3
-        function: put_object
-    exits_system: true
-    third_party: "AWS S3"
 ```
 
 ## Validation
@@ -79,19 +75,6 @@ mix priv_signal.validate
 ```
 
 `mix priv_signal.score` no longer runs flow validation; it scores a semantic diff artifact produced by `mix priv_signal.diff`.
-
-## Rubric V2 Migration
-
-Score contracts are now v2-only:
-
-- Input artifact for `mix priv_signal.score` must be `version: "v2"` with `events[]` (not `changes[]`).
-- Output artifact is `version: "v2"` and no longer includes `points`.
-
-If you have downstream parsers or CI checks that read `points`, migrate them to consume:
-
-- `score` (`NONE|LOW|MEDIUM|HIGH`)
-- `summary.events_total`, `summary.events_high`, `summary.events_medium`, `summary.events_low`
-- `reasons[]` (`event_id`, `rule_id`)
 
 ## Scan Lockfile
 
@@ -161,9 +144,9 @@ Scanner environment overrides:
 - `PRIV_SIGNAL_SCAN_TIMEOUT_MS`
 - `PRIV_SIGNAL_SCAN_MAX_CONCURRENCY`
 
-## Migration from `pii_modules`
+## Migration from `pii_modules` / `pii`
 
-`pii_modules` is no longer accepted. Convert legacy config to `pii` entries with field metadata.
+`pii_modules` and `pii` are no longer accepted. Convert legacy config to `prd_nodes` entries.
 
 Before:
 
@@ -175,12 +158,14 @@ pii_modules:
 After:
 
 ```yaml
-pii:
-  - module: MyApp.Accounts.User
-    fields:
-      - name: email
-        category: contact
-        sensitivity: medium
+prd_nodes:
+  - key: user_email
+    label: User Email
+    class: direct_identifier
+    sensitive: true
+    scope:
+      module: MyApp.Accounts.User
+      field: email
 ```
 
 ## Environment Variables

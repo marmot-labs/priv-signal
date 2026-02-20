@@ -1,14 +1,14 @@
 defmodule Mix.Tasks.PrivSignal.Validate do
   use Mix.Task
 
-  @shortdoc "Validate priv-signal.yml flows against source"
+  @shortdoc "Validate priv-signal.yml PRD node scopes against source"
 
   @moduledoc """
-  Validates configured data flows in priv-signal.yml against the project source.
+  Validates configured PRD node scopes in priv-signal.yml against the project source.
   """
 
   @doc """
-  Runs validation so CI can fail fast before scoring when flow definitions drift.
+  Runs validation so CI can fail fast before scoring when declared PRD scopes drift.
   """
   @impl true
   def run(_args) do
@@ -22,12 +22,12 @@ defmodule Mix.Tasks.PrivSignal.Validate do
 
       case PrivSignal.Validate.status(results) do
         :ok -> :ok
-        :error -> Mix.raise("data flow validation failed")
+        :error -> Mix.raise("config validation failed")
       end
     else
       {:error, errors} ->
         render_errors(errors)
-        Mix.raise("data flow validation failed")
+        Mix.raise("config validation failed")
     end
   end
 

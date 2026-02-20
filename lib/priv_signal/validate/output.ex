@@ -5,13 +5,13 @@ defmodule PrivSignal.Validate.Output do
 
   @doc """
   Formats full validation results into structured log lines so Mix tasks can render
-  a deterministic summary and per-flow status.
+  a deterministic summary and per-scope status.
   """
   def format_results(results) when is_list(results) do
     # Keep the summary first so CI logs surface overall status immediately.
     status = if Enum.all?(results, &Result.ok?/1), do: :ok, else: :error
     summary_level = if status == :ok, do: :info, else: :error
-    summary = %{level: summary_level, message: "data flow validation: #{format_status(status)}"}
+    summary = %{level: summary_level, message: "config validation: #{format_status(status)}"}
 
     [summary | Enum.flat_map(results, &format_result/1)]
   end
@@ -35,7 +35,7 @@ defmodule PrivSignal.Validate.Output do
 
   defp format_result(%Result{flow_id: flow_id, status: status, errors: errors}) do
     header_level = if status == :ok, do: :info, else: :error
-    header = %{level: header_level, message: "flow #{flow_id}: #{format_status(status)}"}
+    header = %{level: header_level, message: "scope #{flow_id}: #{format_status(status)}"}
 
     error_lines =
       Enum.map(errors, fn error ->

@@ -23,7 +23,7 @@ defmodule PrivSignal.Scan.Scanners.LiveViewTest do
 
     assert finding.role_kind == "liveview_render"
     assert finding.sink == "assign"
-    assert Enum.any?(finding.matched_fields, &(&1.name == "email"))
+    assert Enum.any?(finding.matched_nodes, &(&1.name == "email"))
   end
 
   defp fixture_inventory do

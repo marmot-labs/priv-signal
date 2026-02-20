@@ -22,10 +22,7 @@ defmodule PrivSignal.Infer.StableSortTest do
     assert Contract.stable_sort_nodes(Enum.reverse(unsorted)) == expected
   end
 
-  test "contract validates compatible schema versions" do
-    assert Contract.compatible_schema_version?("1")
-    refute Contract.compatible_schema_version?("2.0")
-
+  test "contract validates fixed schema version" do
     artifact = %{
       schema_version: "1",
       tool: %{name: "priv_signal", version: "0.1.0"},

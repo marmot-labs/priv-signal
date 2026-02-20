@@ -30,7 +30,7 @@ defmodule PrivSignal.Infer.NodeIdentityTest do
   defp sample_node do
     %{
       node_type: "sink",
-      pii: [%{reference: "MyApp.User.email", category: "contact", sensitivity: "medium"}],
+      data_refs: [%{reference: "MyApp.User.email", class: "direct_identifier", sensitive: true}],
       code_context: %{
         module: "Elixir.MyApp.Accounts",
         function: "log_signup/2",

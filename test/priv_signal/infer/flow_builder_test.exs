@@ -41,9 +41,9 @@ defmodule PrivSignal.Infer.FlowBuilderTest do
       %{
         id: "psn_sink_1",
         node_type: "sink",
-        pii: [
-          %{reference: "MyApp.User.email", category: "contact", sensitivity: "high"},
-          %{reference: "MyApp.User.phone", category: "contact", sensitivity: "medium"}
+        data_refs: [
+          %{reference: "MyApp.User.email", class: "direct_identifier", sensitive: true},
+          %{reference: "MyApp.User.phone", class: "direct_identifier", sensitive: true}
         ],
         code_context: %{
           module: "MyAppWeb.UserController",
@@ -57,7 +57,7 @@ defmodule PrivSignal.Infer.FlowBuilderTest do
       %{
         id: "psn_entrypoint_1",
         node_type: "entrypoint",
-        pii: [],
+        data_refs: [],
         code_context: %{
           module: "MyAppWeb.UserController",
           function: "create/2",

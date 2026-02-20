@@ -18,6 +18,5 @@ defmodule PrivSignal.Scan.Finding do
             boundary: nil,
             sink: nil,
             matched_nodes: [],
-            matched_fields: [],
             evidence: []
 end

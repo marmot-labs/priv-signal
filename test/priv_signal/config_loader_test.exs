@@ -10,7 +10,6 @@ defmodule PrivSignal.Config.LoaderTest do
     assert {:ok, config} = Loader.load(path)
     assert config.version == 1
     assert length(config.prd_nodes) == 2
-    assert length(config.flows) == 1
     assert is_struct(config.scanners, PrivSignal.Config.Scanners)
     assert config.scanners.logging.enabled
     assert config.scanners.http.enabled
@@ -37,20 +36,6 @@ defmodule PrivSignal.Config.LoaderTest do
           module: MyApp.Accounts.Author
           field: email
 
-    flows:
-      - id: xapi_export
-        description: "User activity exported as xAPI statements"
-        purpose: analytics
-        pii_categories:
-          - user_id
-          - ip_address
-        path:
-          - module: MyAppWeb.ActivityController
-            function: submit
-          - module: MyApp.Analytics.XAPI
-            function: build_statement
-        exits_system: true
-        third_party: "AWS S3"
     """
   end
 end

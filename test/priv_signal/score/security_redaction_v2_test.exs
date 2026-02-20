@@ -77,13 +77,14 @@ defmodule PrivSignal.Score.SecurityRedactionV2Test do
   defp valid_yaml do
     """
     version: 1
-    pii:
-      - module: PrivSignal.Config
-        fields:
-          - name: email
-            category: contact
-            sensitivity: medium
-    flows: []
+    prd_nodes:
+      - key: config_email
+        label: Config Email
+        class: direct_identifier
+        sensitive: true
+        scope:
+          module: PrivSignal.Config
+          field: email
     """
   end
 end

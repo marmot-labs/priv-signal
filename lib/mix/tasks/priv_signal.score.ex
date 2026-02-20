@@ -79,7 +79,7 @@ defmodule Mix.Tasks.PrivSignal.Score do
   end
 
   defp load_config do
-    case PrivSignal.Config.Loader.load(PrivSignal.config_path(), mode: :score) do
+    case PrivSignal.Config.Loader.load(PrivSignal.config_path()) do
       {:ok, config} -> {:ok, config}
       {:error, reason} -> {:error, {:config_load_failed, reason}}
     end

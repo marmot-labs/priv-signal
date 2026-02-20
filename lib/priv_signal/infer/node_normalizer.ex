@@ -7,13 +7,12 @@ defmodule PrivSignal.Infer.NodeNormalizer do
 
   def normalize(node, opts) when is_map(node) do
     root = Keyword.get(opts, :root, File.cwd!())
-    data_refs = normalize_data_refs(get(node, :data_refs) || get(node, :pii))
+    data_refs = normalize_data_refs(get(node, :data_refs))
 
     %Node{
       id: get(node, :id),
       node_type: normalize_node_type(get(node, :node_type)),
       data_refs: data_refs,
-      pii: data_refs_to_legacy_pii(data_refs),
       code_context: normalize_code_context(get(node, :code_context), root),
       role: normalize_role(get(node, :role)),
       confidence: normalize_confidence(get(node, :confidence)),
@@ -123,11 +122,8 @@ defmodule PrivSignal.Infer.NodeNormalizer do
         reference: normalize_reference(get(data_ref, :reference) || get(data_ref, :ref)),
         key: normalize_value(get(data_ref, :key)),
         label: normalize_value(get(data_ref, :label)),
-        class: normalize_value(get(data_ref, :class) || get(data_ref, :category)),
-        sensitive:
-          normalize_boolean(
-            get(data_ref, :sensitive) || sensitivity_to_sensitive(get(data_ref, :sensitivity))
-          )
+        class: normalize_value(get(data_ref, :class)),
+        sensitive: normalize_boolean(get(data_ref, :sensitive))
       }
     end)
     |> Enum.reject(&is_nil(&1.reference))
@@ -136,23 +132,6 @@ defmodule PrivSignal.Infer.NodeNormalizer do
   end
 
   defp normalize_data_refs(_), do: []
-
-  defp data_refs_to_legacy_pii(data_refs) when is_list(data_refs) do
-    Enum.map(data_refs, fn data_ref ->
-      %{
-        reference: data_ref.reference,
-        category: data_ref.class,
-        sensitivity: if(data_ref.sensitive, do: "high", else: "medium")
-      }
-    end)
-  end
-
-  defp data_refs_to_legacy_pii(_), do: []
-
-  defp sensitivity_to_sensitive(value) do
-    value = normalize_value(value)
-    value in ["high", "medium"]
-  end
 
   defp normalize_boolean(true), do: true
   defp normalize_boolean(false), do: false

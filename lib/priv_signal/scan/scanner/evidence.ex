@@ -29,11 +29,7 @@ defmodule PrivSignal.Scan.Scanner.Evidence do
     evidence
     |> Enum.flat_map(& &1.fields)
     |> Enum.uniq()
-    |> Enum.sort_by(&{&1.module, &1.field || &1.name, &1.class || &1.category, &1.key})
-  end
-
-  def matched_fields(evidence) do
-    matched_nodes(evidence)
+    |> Enum.sort_by(&{&1.module, &1.field || &1.name, &1.class, &1.key})
   end
 
   def dedupe(evidence) do
@@ -44,13 +40,13 @@ defmodule PrivSignal.Scan.Scanner.Evidence do
 
   def fields_for_node({{:., _, [_receiver, field]}, _, []}, %Inventory{} = inventory)
       when is_atom(field) do
-    Inventory.fields_for_token(inventory, field)
+    Inventory.nodes_for_token(inventory, field)
   end
 
   def fields_for_node({:%{}, _, pairs}, %Inventory{} = inventory) when is_list(pairs) do
     pairs
     |> Enum.flat_map(fn
-      {key, _value} -> Inventory.fields_for_token(inventory, key)
+      {key, _value} -> Inventory.nodes_for_token(inventory, key)
       _ -> []
     end)
   end
@@ -62,7 +58,7 @@ defmodule PrivSignal.Scan.Scanner.Evidence do
 
       pairs ->
         Enum.flat_map(pairs, fn {key, _value} ->
-          Inventory.fields_for_token(inventory, key)
+          Inventory.nodes_for_token(inventory, key)
         end)
     end
   end
@@ -82,7 +78,7 @@ defmodule PrivSignal.Scan.Scanner.Evidence do
   end
 
   def fields_for_node(value, %Inventory{} = inventory) when is_atom(value) or is_binary(value) do
-    Inventory.fields_for_token(inventory, value)
+    Inventory.nodes_for_token(inventory, value)
   end
 
   def fields_for_node(_, _), do: []

@@ -91,17 +91,6 @@ defmodule PrivSignal.TelemetryTest do
         scope:
           module: MyApp.Accounts.User
           field: email
-
-    flows:
-      - id: xapi_export
-        description: "User activity exported as xAPI statements"
-        purpose: analytics
-        pii_categories:
-          - user_id
-        path:
-          - module: MyAppWeb.ActivityController
-            function: submit
-        exits_system: false
     """
   end
 end

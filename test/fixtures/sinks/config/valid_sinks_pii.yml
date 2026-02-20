@@ -14,12 +14,3 @@ prd_nodes:
     scope:
       module: MyApp.Accounts.User
       field: phone
-flows:
-  - id: "flow-1"
-    description: "User data processing"
-    purpose: "Support account operations"
-    pii_categories: ["contact"]
-    path:
-      - module: "MyApp.Accounts"
-        function: "update_user"
-    exits_system: false

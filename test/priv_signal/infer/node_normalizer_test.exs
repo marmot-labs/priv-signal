@@ -8,9 +8,9 @@ defmodule PrivSignal.Infer.NodeNormalizerTest do
 
     raw = %{
       node_type: :SINK,
-      pii: [
-        %{reference: "MyApp.User.email", category: "contact", sensitivity: "medium"},
-        %{reference: "MyApp.User.email", category: "contact", sensitivity: "medium"}
+      data_refs: [
+        %{reference: "MyApp.User.email", class: "direct_identifier", sensitive: true},
+        %{reference: "MyApp.User.email", class: "direct_identifier", sensitive: true}
       ],
       code_context: %{
         module: "Elixir.MyApp.Accounts",
@@ -49,7 +49,7 @@ defmodule PrivSignal.Infer.NodeNormalizerTest do
     assert normalized.role.callee == "Logger.info"
     assert normalized.role.arity == 1
     assert normalized.confidence == 1.0
-    assert length(normalized.pii) == 1
+    assert length(normalized.data_refs) == 1
     assert length(normalized.evidence) == 1
     assert hd(normalized.evidence).finding_id == "abc123"
   end
@@ -59,7 +59,7 @@ defmodule PrivSignal.Infer.NodeNormalizerTest do
 
     assert normalized.node_type == nil
     assert normalized.code_context == %{module: nil, function: nil, file_path: nil}
-    assert normalized.pii == []
+    assert normalized.data_refs == []
     assert normalized.evidence == []
     assert normalized.role == %{kind: nil, callee: nil}
     assert normalized.confidence == 0.5
