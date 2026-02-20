@@ -22,7 +22,7 @@ defmodule Mix.Tasks.PrivSignalV2E2ETest do
       Mix.Tasks.PrivSignal.Scan.run(["--quiet"])
       assert File.exists?("priv_signal.lockfile.json")
 
-      git!(["add", "priv-signal.yml", "lib/demo_logger.ex", "priv_signal.lockfile.json"])
+      git!(["add", "priv_signal.yml", "lib/demo_logger.ex", "priv_signal.lockfile.json"])
       git!(["commit", "-m", "base"])
 
       write_source("""
@@ -85,7 +85,7 @@ defmodule Mix.Tasks.PrivSignalV2E2ETest do
 
   defp write_valid_config do
     File.write!(
-      "priv-signal.yml",
+      "priv_signal.yml",
       """
       version: 1
 

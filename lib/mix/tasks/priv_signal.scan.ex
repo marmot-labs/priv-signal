@@ -74,7 +74,12 @@ defmodule Mix.Tasks.PrivSignal.Scan do
   defp emit_summary(result, json_path) do
     summary = Map.get(result, :summary, %{})
     class_counts = Map.get(summary, :data_class_counts, %{})
+    files_scanned = Map.get(summary, :files_scanned, 0)
+    scan_duration_ms = Map.get(summary, :scan_duration_ms, 0)
 
+    Mix.shell().info("")
+    Mix.shell().info("")
+    Mix.shell().info("PrivSignal Scanned #{files_scanned} files in #{scan_duration_ms} ms")
     Mix.shell().info("scan nodes: total=#{Map.get(summary, :node_count, 0)}")
     Mix.shell().info("scan data_nodes: total=#{Map.get(summary, :data_node_count, 0)}")
     Mix.shell().info("scan classes: #{format_class_counts(class_counts)}")
@@ -105,11 +110,11 @@ defmodule Mix.Tasks.PrivSignal.Scan do
   defp load_config do
     case PrivSignal.Config.Loader.load() do
       {:ok, config} ->
-        Mix.shell().info("priv-signal.yml is valid")
+        Mix.shell().info("priv_signal.yml is valid")
         {:ok, config}
 
       {:error, errors} ->
-        Mix.shell().error("priv-signal.yml is invalid")
+        Mix.shell().error("priv_signal.yml is invalid")
         {:error, errors}
     end
   end

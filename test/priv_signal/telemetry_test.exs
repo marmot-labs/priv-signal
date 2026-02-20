@@ -22,7 +22,7 @@ defmodule PrivSignal.TelemetryTest do
 
     File.mkdir_p!(tmp_dir)
 
-    config_path = Path.join(tmp_dir, "priv-signal.yml")
+    config_path = Path.join(tmp_dir, "priv_signal.yml")
     File.write!(config_path, sample_yaml())
 
     assert {:ok, _config} = PrivSignal.Config.Loader.load(config_path)

@@ -40,7 +40,7 @@ defmodule Mix.Tasks.PrivSignal.ScanSinksIntegrationTest do
 
   defp write_config do
     File.write!(
-      "priv-signal.yml",
+      "priv_signal.yml",
       """
       version: 1
 

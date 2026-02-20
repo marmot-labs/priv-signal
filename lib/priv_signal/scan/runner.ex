@@ -76,6 +76,7 @@ defmodule PrivSignal.Scan.Runner do
         high_sensitivity_count: Enum.count(findings, &(&1.sensitivity == :high)),
         class_counts: class_counts(findings),
         files_scanned: length(files),
+        scan_duration_ms: duration_ms,
         errors: length(errors)
       },
       inventory: %{

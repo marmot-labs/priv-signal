@@ -1,7 +1,7 @@
 defmodule Mix.Tasks.PrivSignal.InitTest do
   use ExUnit.Case
 
-  test "creates priv-signal.yml in current directory" do
+  test "creates priv_signal.yml in current directory" do
     tmp_dir =
       Path.join(System.tmp_dir!(), "priv_signal_init_#{System.unique_integer([:positive])}")
 
@@ -11,8 +11,8 @@ defmodule Mix.Tasks.PrivSignal.InitTest do
       Mix.shell(Mix.Shell.Process)
       Mix.Tasks.PrivSignal.Init.run([])
 
-      assert File.exists?("priv-signal.yml")
-      content = File.read!("priv-signal.yml")
+      assert File.exists?("priv_signal.yml")
+      content = File.read!("priv_signal.yml")
       assert String.contains?(content, "prd_nodes:")
       assert String.contains?(content, "scanners:")
       assert String.contains?(content, "logging:")

@@ -29,7 +29,7 @@ defmodule PrivSignal.Score.SecurityRedactionV2Test do
     with_tmp_dir(fn ->
       secret = "alice.sensitive@example.com"
 
-      File.write!("priv-signal.yml", valid_yaml())
+      File.write!("priv_signal.yml", valid_yaml())
 
       File.write!(
         "privacy_diff.json",

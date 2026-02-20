@@ -8,12 +8,12 @@ defmodule Mix.Tasks.PrivSignal.ValidateTest do
     File.mkdir_p!(tmp_dir)
 
     File.cd!(tmp_dir, fn ->
-      File.write!("priv-signal.yml", passing_yaml())
+      File.write!("priv_signal.yml", passing_yaml())
 
       Mix.shell(Mix.Shell.Process)
       Mix.Tasks.PrivSignal.Validate.run([])
 
-      assert_received {:mix_shell, :info, ["priv-signal.yml is valid"]}
+      assert_received {:mix_shell, :info, ["priv_signal.yml is valid"]}
       assert_received {:mix_shell, :info, ["config validation: ok"]}
     end)
   end
@@ -25,7 +25,7 @@ defmodule Mix.Tasks.PrivSignal.ValidateTest do
     File.mkdir_p!(tmp_dir)
 
     File.cd!(tmp_dir, fn ->
-      File.write!("priv-signal.yml", missing_prd_yaml())
+      File.write!("priv_signal.yml", missing_prd_yaml())
 
       Mix.shell(Mix.Shell.Process)
 
@@ -45,7 +45,7 @@ defmodule Mix.Tasks.PrivSignal.ValidateTest do
     File.mkdir_p!(tmp_dir)
 
     File.cd!(tmp_dir, fn ->
-      File.write!("priv-signal.yml", deprecated_yaml())
+      File.write!("priv_signal.yml", deprecated_yaml())
 
       Mix.shell(Mix.Shell.Process)
 

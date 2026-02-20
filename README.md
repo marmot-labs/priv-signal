@@ -15,7 +15,7 @@ mix priv_signal.score --diff tmp/privacy_diff.json --output tmp/priv_signal_scor
 
 ## Configuration
 
-PrivSignal uses a repo-root `priv-signal.yml` file as the source of truth. Example:
+PrivSignal uses a repo-root `priv_signal.yml` file as the source of truth. Example:
 
 ```yaml
 version: 1

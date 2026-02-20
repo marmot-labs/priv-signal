@@ -13,8 +13,9 @@ defmodule Mix.Tasks.PrivSignal.ScanTest do
       Mix.Tasks.PrivSignal.Scan.run([])
 
       assert File.exists?("priv_signal.lockfile.json")
-      assert_received {:mix_shell, :info, ["priv-signal.yml is valid"]}
+      assert_received {:mix_shell, :info, ["priv_signal.yml is valid"]}
       infos = collect_infos([])
+      assert Enum.any?(infos, &String.contains?(&1, "PrivSignal Scanned "))
       assert Enum.any?(infos, &String.contains?(&1, "scan nodes:"))
     end)
   end
@@ -54,7 +55,7 @@ defmodule Mix.Tasks.PrivSignal.ScanTest do
     tmp_dir = make_tmp_dir("priv_signal_scan_deprecated")
 
     File.cd!(tmp_dir, fn ->
-      File.write!("priv-signal.yml", deprecated_config_yaml())
+      File.write!("priv_signal.yml", deprecated_config_yaml())
 
       Mix.shell(Mix.Shell.Process)
       Mix.Task.reenable("priv_signal.scan")
@@ -64,7 +65,7 @@ defmodule Mix.Tasks.PrivSignal.ScanTest do
       end
 
       errors = collect_errors([])
-      assert Enum.any?(errors, &String.contains?(&1, "priv-signal.yml is invalid"))
+      assert Enum.any?(errors, &String.contains?(&1, "priv_signal.yml is invalid"))
       assert Enum.any?(errors, &String.contains?(&1, "pii_modules is unsupported"))
     end)
   end
@@ -101,7 +102,7 @@ defmodule Mix.Tasks.PrivSignal.ScanTest do
   end
 
   defp write_valid_config do
-    File.write!("priv-signal.yml", valid_config_yaml())
+    File.write!("priv_signal.yml", valid_config_yaml())
   end
 
   defp write_logging_source do

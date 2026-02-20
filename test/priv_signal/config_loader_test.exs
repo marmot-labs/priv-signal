@@ -3,7 +3,7 @@ defmodule PrivSignal.Config.LoaderTest do
 
   alias PrivSignal.Config.Loader
 
-  test "loads config from priv-signal.yml" do
+  test "loads config from priv_signal.yml" do
     path = Path.join(System.tmp_dir!(), "priv_signal_#{System.unique_integer([:positive])}.yml")
     File.write!(path, sample_yaml())
 

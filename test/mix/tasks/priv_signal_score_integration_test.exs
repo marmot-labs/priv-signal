@@ -11,7 +11,7 @@ defmodule Mix.Tasks.PrivSignal.ScoreIntegrationTest do
     File.mkdir_p!(tmp_dir)
 
     File.cd!(tmp_dir, fn ->
-      File.write!("priv-signal.yml", sample_yaml())
+      File.write!("priv_signal.yml", sample_yaml())
       File.write!("privacy_diff.json", Jason.encode!(sample_diff(), pretty: true))
 
       Mix.shell(Mix.Shell.Process)

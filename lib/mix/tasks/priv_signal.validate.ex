@@ -1,10 +1,10 @@
 defmodule Mix.Tasks.PrivSignal.Validate do
   use Mix.Task
 
-  @shortdoc "Validate priv-signal.yml PRD node scopes against source"
+  @shortdoc "Validate priv_signal.yml PRD node scopes against source"
 
   @moduledoc """
-  Validates configured PRD node scopes in priv-signal.yml against the project source.
+  Validates configured PRD node scopes in priv_signal.yml against the project source.
   """
 
   @doc """
@@ -49,11 +49,11 @@ defmodule Mix.Tasks.PrivSignal.Validate do
   defp load_config do
     case PrivSignal.Config.Loader.load() do
       {:ok, config} ->
-        Mix.shell().info("priv-signal.yml is valid")
+        Mix.shell().info("priv_signal.yml is valid")
         {:ok, config}
 
       {:error, errors} ->
-        Mix.shell().error("priv-signal.yml is invalid")
+        Mix.shell().error("priv_signal.yml is invalid")
         render_errors(errors)
         {:error, errors}
     end

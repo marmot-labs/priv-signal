@@ -1,6 +1,6 @@
 defmodule PrivSignal.Config do
   @moduledoc """
-  In-memory representation of priv-signal.yml.
+  In-memory representation of priv_signal.yml.
   """
 
   alias PrivSignal.Config.{

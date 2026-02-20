@@ -1,21 +1,19 @@
 ---
 name: priv-signal-inventory
-description: Generate an initial PrivSignal inventory config by inspecting an Elixir repository, detecting how schemas are defined, and extracting likely privacy-relevant fields into `priv-signal.yml`. Use when asked to bootstrap/update PrivSignal config, inventory PII/PRD fields, or map sensitive data from Ecto/Ash models.
+description: Generate an initial PrivSignal inventory config by inspecting an Elixir repository, detecting how schemas are defined, and extracting likely privacy-relevant fields into `priv_signal.yml`. Use when asked to bootstrap/update PrivSignal config, inventory PII/PRD fields, or map sensitive data from Ecto/Ash models.
 ---
 
 # PrivSignal Inventory
 
 ## Goal
-Create a high-confidence first-pass `priv-signal.yml` in the repository root.
+Create a high-confidence first-pass `priv_signal.yml` in the repository root.
 
 Use repository code to infer likely PRD nodes, especially from Ecto and Ash schema definitions.
 
 ## Required Output Contract
-Write canonical config filename `priv-signal.yml` (hyphenated).
+Write canonical config filename `priv_signal.yml` (underscore).
 
-Do not use `priv_signal.yml` as the final output name because PrivSignal expects `priv-signal.yml`.
-
-If `priv-signal.yml` already exists, write `priv-signal.candidate.yml` unless explicitly asked to overwrite the existing file.
+If `priv_signal.yml` already exists, write `priv_signal.candidate.yml` unless explicitly asked to overwrite the existing file.
 
 Emit this minimum structure:
 
@@ -52,7 +50,7 @@ flows: []
 3. Extract candidate fields and map each field to a PRD node.
 4. Classify nodes into allowed classes (`direct_identifier`, `persistent_pseudonymous_identifier`, `behavioral_signal`, `inferred_attribute`, `sensitive_context_indicator`).
 5. Set `sensitive: true` for highly sensitive fields (health, financial account/payment, government identifiers, credentials/tokens, protected-context indicators).
-6. Write `priv-signal.yml` at repo root.
+6. Write `priv_signal.yml` at repo root.
 7. If PrivSignal mix tasks are available, run `mix priv_signal.validate` and fix schema issues.
 8. Report uncertain classifications and what to review manually.
 

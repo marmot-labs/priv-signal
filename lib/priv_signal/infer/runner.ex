@@ -115,6 +115,7 @@ defmodule PrivSignal.Infer.Runner do
       node_type_counts: count_by(nodes, &Map.get(&1, :node_type)),
       boundary_counts: count_by(flows, &Map.get(&1, :boundary)),
       files_scanned: Map.get(summary, :files_scanned, 0),
+      scan_duration_ms: Map.get(summary, :scan_duration_ms, 0),
       scan_error_count: Map.get(summary, :errors, 0),
       confirmed_count: Map.get(summary, :confirmed_count, 0),
       possible_count: Map.get(summary, :possible_count, 0)

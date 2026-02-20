@@ -3,7 +3,7 @@ defmodule Mix.Tasks.PrivSignal.ScoreTest do
 
   test "scores deterministic output from --diff input" do
     with_tmp_dir(fn ->
-      File.write!("priv-signal.yml", sample_yaml())
+      File.write!("priv_signal.yml", sample_yaml())
       File.write!("privacy_diff.json", Jason.encode!(sample_diff(), pretty: true))
 
       Mix.shell(Mix.Shell.Process)
@@ -24,7 +24,7 @@ defmodule Mix.Tasks.PrivSignal.ScoreTest do
 
   test "fails when --diff is missing" do
     with_tmp_dir(fn ->
-      File.write!("priv-signal.yml", sample_yaml())
+      File.write!("priv_signal.yml", sample_yaml())
       Mix.shell(Mix.Shell.Process)
 
       assert_raise Mix.Error, ~r/score failed/, fn ->
@@ -38,7 +38,7 @@ defmodule Mix.Tasks.PrivSignal.ScoreTest do
   test "scores with minimal prd_nodes config" do
     with_tmp_dir(fn ->
       File.write!(
-        "priv-signal.yml",
+        "priv_signal.yml",
         """
         version: 1
 
@@ -64,7 +64,7 @@ defmodule Mix.Tasks.PrivSignal.ScoreTest do
 
   test "fails when diff json is malformed" do
     with_tmp_dir(fn ->
-      File.write!("priv-signal.yml", sample_yaml())
+      File.write!("priv_signal.yml", sample_yaml())
       File.write!("privacy_diff.json", "{not json")
 
       Mix.shell(Mix.Shell.Process)
@@ -80,7 +80,7 @@ defmodule Mix.Tasks.PrivSignal.ScoreTest do
 
   test "fails on unsupported diff schema version" do
     with_tmp_dir(fn ->
-      File.write!("priv-signal.yml", sample_yaml())
+      File.write!("priv_signal.yml", sample_yaml())
 
       invalid_diff = Map.put(sample_diff(), :version, "v9")
       File.write!("privacy_diff.json", Jason.encode!(invalid_diff, pretty: true))

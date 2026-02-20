@@ -3,7 +3,7 @@ defmodule Mix.Tasks.PrivSignal.ScoreV2ContractTest do
 
   test "requires diff v2 and emits output version v2" do
     with_tmp_dir(fn ->
-      File.write!("priv-signal.yml", valid_yaml())
+      File.write!("priv_signal.yml", valid_yaml())
       File.write!("privacy_diff.json", Jason.encode!(valid_v2_diff(), pretty: true))
 
       Mix.shell(Mix.Shell.Process)
@@ -18,7 +18,7 @@ defmodule Mix.Tasks.PrivSignal.ScoreV2ContractTest do
 
   test "fails on legacy diff v1 contract" do
     with_tmp_dir(fn ->
-      File.write!("priv-signal.yml", valid_yaml())
+      File.write!("priv_signal.yml", valid_yaml())
       File.write!("privacy_diff.json", Jason.encode!(%{version: "v1", changes: []}, pretty: true))
 
       Mix.shell(Mix.Shell.Process)

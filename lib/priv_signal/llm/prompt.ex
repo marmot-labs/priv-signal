@@ -5,7 +5,7 @@ defmodule PrivSignal.LLM.Prompt do
     system =
       """
       You are "PrivSignal": code-review assistant for privacy risk analysis in PRs.
-      PrivSignal treats priv-signal.yml as the source of truth for documented data flows.
+      PrivSignal treats priv_signal.yml as the source of truth for documented data flows.
       Your goal: detect MATERIAL changes to those stated flows or new privacy-relevant behavior and report an overall risk summary.
 
       Follow these rules strictly:
@@ -140,7 +140,7 @@ defmodule PrivSignal.LLM.Prompt do
 
     user =
       """
-      Here is the current priv-signal.yml config summary:
+      Here is the current priv_signal.yml config summary:
       #{Jason.encode!(config_summary)}
 
       Here is the current git diff (unified):

@@ -1,10 +1,10 @@
 defmodule Mix.Tasks.PrivSignal.Init do
   use Mix.Task
 
-  @shortdoc "Create a starter priv-signal.yml"
+  @shortdoc "Create a starter priv_signal.yml"
 
   @moduledoc """
-  Creates a starter priv-signal.yml in the current directory.
+  Creates a starter priv_signal.yml in the current directory.
   """
 
   @impl true
@@ -12,7 +12,7 @@ defmodule Mix.Tasks.PrivSignal.Init do
     path = PrivSignal.config_path()
 
     if File.exists?(path) do
-      Mix.shell().info("priv-signal.yml already exists at #{path}")
+      Mix.shell().info("priv_signal.yml already exists at #{path}")
     else
       File.write!(path, sample_config())
       Mix.shell().info("Created #{path}")

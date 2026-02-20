@@ -1,4 +1,4 @@
 interface:
   display_name: "PrivSignal Inventory"
-  short_description: "Generate initial priv-signal.yml from repository schemas"
-  default_prompt: "Inspect this repository and generate a candidate priv-signal.yml using PRD nodes inferred from Ecto and/or Ash schemas."
+  short_description: "Generate initial priv_signal.yml from repository schemas"
+  default_prompt: "Inspect this repository and generate a candidate priv_signal.yml using PRD nodes inferred from Ecto and/or Ash schemas."

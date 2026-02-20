@@ -3,7 +3,7 @@ defmodule PrivSignal.Diff.CLIIntegrationTest do
 
   alias PrivSignal.Test.DiffFixtureHelper
 
-  test "mix priv_signal.diff succeeds in workspace-candidate mode without priv-signal.yml" do
+  test "mix priv_signal.diff succeeds in workspace-candidate mode without priv_signal.yml" do
     tmp_dir = make_tmp_dir("priv_signal_diff_cli_workspace")
 
     File.cd!(tmp_dir, fn ->
@@ -29,7 +29,7 @@ defmodule PrivSignal.Diff.CLIIntegrationTest do
 
       assert_received {:mix_shell, :info, [message]}
       assert String.contains?(message, "Privacy-Relevant Changes Detected")
-      refute File.exists?("priv-signal.yml")
+      refute File.exists?("priv_signal.yml")
     end)
   end
 

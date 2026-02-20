@@ -38,7 +38,8 @@ defmodule PrivSignal.Infer.RunnerIntegrationTest do
 
     assert first.nodes == second.nodes
     assert first.flows == second.flows
-    assert first.summary == second.summary
+    assert Map.delete(first.summary, :scan_duration_ms) ==
+             Map.delete(second.summary, :scan_duration_ms)
   end
 
   test "runner disables proto flows when feature flag is off" do

@@ -3,7 +3,7 @@ defmodule PrivSignal do
   Core helpers for the PrivSignal CLI.
   """
 
-  @config_file "priv-signal.yml"
+  @config_file "priv_signal.yml"
 
   @doc """
   Returns the default config file name.
