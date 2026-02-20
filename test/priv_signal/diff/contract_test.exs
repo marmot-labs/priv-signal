@@ -6,7 +6,16 @@ defmodule PrivSignal.Diff.ContractTest do
 
   test "validates artifact and returns warnings for missing optional sections in non-strict mode" do
     artifact = %{
-      "schema_version" => "1.2",
+      "schema_version" => "1",
+      "data_nodes" => [
+        %{
+          "key" => "user_email",
+          "name" => "User Email",
+          "class" => "direct_identifier",
+          "sensitive" => false,
+          "scope" => %{"module" => "Demo.User", "field" => "email"}
+        }
+      ],
       "flows" => [
         %{
           "id" => "flow_1",
@@ -19,14 +28,23 @@ defmodule PrivSignal.Diff.ContractTest do
     }
 
     assert {:ok, validated} = Contract.validate(artifact, strict: false)
-    assert validated.schema_version == "1.2"
+    assert validated.schema_version == "1"
     assert is_list(validated.warnings)
     assert Enum.any?(validated.warnings, &String.contains?(&1, "optional section missing"))
   end
 
   test "strict mode fails when optional sections are missing" do
     artifact = %{
-      "schema_version" => "1.2",
+      "schema_version" => "1",
+      "data_nodes" => [
+        %{
+          "key" => "user_email",
+          "name" => "User Email",
+          "class" => "direct_identifier",
+          "sensitive" => false,
+          "scope" => %{"module" => "Demo.User", "field" => "email"}
+        }
+      ],
       "flows" => [
         %{
           "id" => "flow_1",
@@ -62,12 +80,13 @@ defmodule PrivSignal.Diff.ContractTest do
     assert {:error, {:unsupported_schema_version, %{schema_version: "2.0", supported: supported}}} =
              Contract.validate(artifact, strict: false)
 
-    assert "1.2" in supported
+    assert "1" in supported
   end
 
   test "returns missing required keys for flow" do
     artifact = %{
-      "schema_version" => "1.2",
+      "schema_version" => "1",
+      "data_nodes" => [],
       "flows" => [
         %{
           "id" => "flow_1",

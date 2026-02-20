@@ -40,7 +40,7 @@ defmodule PrivSignal.Scan.TelemetryTest do
 
     assert measurements1.duration_ms >= 0
     assert is_integer(metadata1.module_count)
-    assert is_integer(metadata1.field_count)
+    assert is_integer(metadata1.node_count)
 
     assert_received {:telemetry, [:priv_signal, :scan, :run], measurements2, metadata2}
     assert measurements2.file_count >= 1

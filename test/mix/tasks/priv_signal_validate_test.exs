@@ -38,14 +38,14 @@ defmodule Mix.Tasks.PrivSignal.ValidateTest do
     end)
   end
 
-  test "mix priv_signal.validate fails when pii module is missing" do
+  test "mix priv_signal.validate fails when prd module is missing" do
     tmp_dir =
       Path.join(System.tmp_dir!(), "priv_signal_validate_#{System.unique_integer([:positive])}")
 
     File.mkdir_p!(tmp_dir)
 
     File.cd!(tmp_dir, fn ->
-      File.write!("priv-signal.yml", missing_pii_yaml())
+      File.write!("priv-signal.yml", missing_prd_yaml())
 
       Mix.shell(Mix.Shell.Process)
 
@@ -54,7 +54,7 @@ defmodule Mix.Tasks.PrivSignal.ValidateTest do
       end
 
       errors = collect_errors([])
-      assert Enum.any?(errors, &String.contains?(&1, "missing pii module"))
+      assert Enum.any?(errors, &String.contains?(&1, "missing prd module"))
     end)
   end
 
@@ -74,7 +74,7 @@ defmodule Mix.Tasks.PrivSignal.ValidateTest do
       end
 
       errors = collect_errors([])
-      assert Enum.any?(errors, &String.contains?(&1, "pii_modules is deprecated"))
+      assert Enum.any?(errors, &String.contains?(&1, "pii_modules is unsupported"))
     end)
   end
 
@@ -82,12 +82,14 @@ defmodule Mix.Tasks.PrivSignal.ValidateTest do
     """
     version: 1
 
-    pii:
-      - module: PrivSignal.Config
-        fields:
-          - name: email
-            category: contact
-            sensitivity: medium
+    prd_nodes:
+      - key: config_email
+        label: Config Email
+        class: direct_identifier
+        sensitive: true
+        scope:
+          module: PrivSignal.Config
+          field: email
 
     flows:
       - id: config_load_chain
@@ -110,12 +112,14 @@ defmodule Mix.Tasks.PrivSignal.ValidateTest do
     """
     version: 1
 
-    pii:
-      - module: PrivSignal.Config
-        fields:
-          - name: email
-            category: contact
-            sensitivity: medium
+    prd_nodes:
+      - key: config_email
+        label: Config Email
+        class: direct_identifier
+        sensitive: true
+        scope:
+          module: PrivSignal.Config
+          field: email
 
     flows:
       - id: config_load_chain
@@ -132,16 +136,18 @@ defmodule Mix.Tasks.PrivSignal.ValidateTest do
     """
   end
 
-  defp missing_pii_yaml do
+  defp missing_prd_yaml do
     """
     version: 1
 
-    pii:
-      - module: Missing.PII.Module
-        fields:
-          - name: email
-            category: contact
-            sensitivity: medium
+    prd_nodes:
+      - key: missing_email
+        label: Missing Email
+        class: direct_identifier
+        sensitive: true
+        scope:
+          module: Missing.PII.Module
+          field: email
 
     flows:
       - id: config_load_chain
@@ -164,6 +170,7 @@ defmodule Mix.Tasks.PrivSignal.ValidateTest do
 
     pii_modules:
       - PrivSignal.Config
+    prd_nodes: []
 
     flows: []
     """

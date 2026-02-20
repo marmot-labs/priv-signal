@@ -3,6 +3,7 @@ defmodule PrivSignal.Infer.Node do
 
   defstruct id: nil,
             node_type: nil,
+            data_refs: [],
             pii: [],
             code_context: %{},
             role: %{},

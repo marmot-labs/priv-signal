@@ -62,7 +62,8 @@ defmodule PrivSignal.Scan.Scanner.Telemetry do
                 file: path,
                 line: sink_line(node),
                 sink: sink,
-                matched_fields: Evidence.matched_fields(evidence),
+                matched_nodes: Evidence.matched_nodes(evidence),
+                matched_fields: Evidence.matched_nodes(evidence),
                 evidence: evidence,
                 role_kind: "telemetry",
                 boundary: "external"

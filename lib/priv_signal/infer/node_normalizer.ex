@@ -7,11 +7,13 @@ defmodule PrivSignal.Infer.NodeNormalizer do
 
   def normalize(node, opts) when is_map(node) do
     root = Keyword.get(opts, :root, File.cwd!())
+    data_refs = normalize_data_refs(get(node, :data_refs) || get(node, :pii))
 
     %Node{
       id: get(node, :id),
       node_type: normalize_node_type(get(node, :node_type)),
-      pii: normalize_pii(get(node, :pii)),
+      data_refs: data_refs,
+      pii: data_refs_to_legacy_pii(data_refs),
       code_context: normalize_code_context(get(node, :code_context), root),
       role: normalize_role(get(node, :role)),
       confidence: normalize_confidence(get(node, :confidence)),
@@ -32,7 +34,7 @@ defmodule PrivSignal.Infer.NodeNormalizer do
       get_in(normalized.code_context, [:file_path]) || "",
       get_in(normalized.role, [:kind]) || "",
       normalized
-      |> Map.get(:pii, [])
+      |> Map.get(:data_refs, [])
       |> Enum.map(&Map.get(&1, :reference))
       |> Enum.reject(&is_nil/1)
       |> Enum.join(",")
@@ -114,21 +116,49 @@ defmodule PrivSignal.Infer.NodeNormalizer do
 
   defp normalize_node_type(_), do: nil
 
-  defp normalize_pii(pii) when is_list(pii) do
-    pii
-    |> Enum.map(fn pii_entry ->
+  defp normalize_data_refs(data_refs) when is_list(data_refs) do
+    data_refs
+    |> Enum.map(fn data_ref ->
       %{
-        reference: normalize_reference(get(pii_entry, :reference) || get(pii_entry, :ref)),
-        category: normalize_value(get(pii_entry, :category)),
-        sensitivity: normalize_value(get(pii_entry, :sensitivity))
+        reference: normalize_reference(get(data_ref, :reference) || get(data_ref, :ref)),
+        key: normalize_value(get(data_ref, :key)),
+        label: normalize_value(get(data_ref, :label)),
+        class: normalize_value(get(data_ref, :class) || get(data_ref, :category)),
+        sensitive:
+          normalize_boolean(
+            get(data_ref, :sensitive) || sensitivity_to_sensitive(get(data_ref, :sensitivity))
+          )
       }
     end)
     |> Enum.reject(&is_nil(&1.reference))
-    |> Enum.uniq_by(&{&1.reference, &1.category, &1.sensitivity})
-    |> Enum.sort_by(&{&1.reference, &1.category || "", &1.sensitivity || ""})
+    |> Enum.uniq_by(&{&1.reference, &1.key, &1.class, &1.sensitive})
+    |> Enum.sort_by(&{&1.reference, &1.class || "", &1.key || "", &1.sensitive || false})
   end
 
-  defp normalize_pii(_), do: []
+  defp normalize_data_refs(_), do: []
+
+  defp data_refs_to_legacy_pii(data_refs) when is_list(data_refs) do
+    Enum.map(data_refs, fn data_ref ->
+      %{
+        reference: data_ref.reference,
+        category: data_ref.class,
+        sensitivity: if(data_ref.sensitive, do: "high", else: "medium")
+      }
+    end)
+  end
+
+  defp data_refs_to_legacy_pii(_), do: []
+
+  defp sensitivity_to_sensitive(value) do
+    value = normalize_value(value)
+    value in ["high", "medium"]
+  end
+
+  defp normalize_boolean(true), do: true
+  defp normalize_boolean(false), do: false
+  defp normalize_boolean("true"), do: true
+  defp normalize_boolean("false"), do: false
+  defp normalize_boolean(_), do: false
 
   defp normalize_reference(nil), do: nil
 

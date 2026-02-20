@@ -28,7 +28,7 @@ defmodule PrivSignal.Infer.ScannerAdapter.Logging do
     node =
       %Node{
         node_type: node_type_from_finding(finding),
-        pii: pii_from_finding(finding),
+        data_refs: data_refs_from_finding(finding),
         code_context: %{
           module: module_name,
           function: function_with_arity(finding),
@@ -64,7 +64,7 @@ defmodule PrivSignal.Infer.ScannerAdapter.Logging do
         node =
           %Node{
             node_type: "entrypoint",
-            pii: [],
+            data_refs: [],
             code_context: sink_node.code_context,
             role: %{
               kind: kind,
@@ -119,24 +119,31 @@ defmodule PrivSignal.Infer.ScannerAdapter.Logging do
     }
   end
 
-  defp pii_from_finding(finding) do
+  defp data_refs_from_finding(finding) do
     finding
-    |> Map.get(:matched_fields, [])
-    |> Enum.map(fn field ->
-      module = Map.get(field, :module)
-      name = Map.get(field, :name)
+    |> Map.get(:matched_nodes, Map.get(finding, :matched_fields, []))
+    |> Enum.map(fn node ->
+      module = Map.get(node, :module)
+      field = Map.get(node, :field) || Map.get(node, :name)
 
       %{
-        reference: pii_reference(module, name),
-        category: Map.get(field, :category),
-        sensitivity: Map.get(field, :sensitivity)
+        reference: data_reference(module, field),
+        key: Map.get(node, :key),
+        label: Map.get(node, :label),
+        class: Map.get(node, :class) || Map.get(node, :category),
+        sensitive:
+          case Map.get(node, :sensitive) do
+            true -> true
+            false -> false
+            _ -> Map.get(node, :sensitivity) in ["high", "medium"]
+          end
       }
     end)
   end
 
-  defp pii_reference(module, nil), do: module
-  defp pii_reference(nil, name), do: name
-  defp pii_reference(module, name), do: module <> "." <> name
+  defp data_reference(module, nil), do: module
+  defp data_reference(nil, name), do: name
+  defp data_reference(module, name), do: module <> "." <> name
 
   defp function_with_arity(finding) do
     function = Map.get(finding, :function)
@@ -165,7 +172,7 @@ defmodule PrivSignal.Infer.ScannerAdapter.Logging do
       type = Map.get(evidence, :type)
 
       %{
-        rule: "#{role_kind}_pii",
+        rule: "#{role_kind}_prd",
         signal: if(is_atom(type), do: Atom.to_string(type), else: to_string(type || "unknown")),
         finding_id: finding_id,
         line: line,
@@ -189,6 +196,7 @@ defmodule PrivSignal.Infer.ScannerAdapter.Logging do
 
   defp ast_kind(:direct_field_access), do: "field_access"
   defp ast_kind(:key_match), do: "key_match"
+  defp ast_kind(:prd_container), do: "struct"
   defp ast_kind(:pii_container), do: "struct"
   defp ast_kind(:bulk_inspect), do: "call"
   defp ast_kind(:token_match), do: "token"

@@ -2,6 +2,7 @@ defmodule PrivSignal.Config.Schema do
   @moduledoc false
 
   alias PrivSignal.Config
+  alias PrivSignal.Config.PRD
 
   @required_flow_keys [:id, :description, :purpose, :pii_categories, :path, :exits_system]
   @required_path_keys [:module, :function]
@@ -13,8 +14,8 @@ defmodule PrivSignal.Config.Schema do
     mode = Keyword.get(opts, :mode, :default)
     errors = []
     errors = validate_version(map, errors)
-    errors = validate_legacy_pii_modules(map, errors)
-    errors = validate_pii(map, errors)
+    errors = reject_legacy_pii(map, errors, mode)
+    errors = validate_prd_nodes(map, errors, mode)
     errors = validate_flows(map, errors, mode)
     errors = validate_scanners(map, errors)
     errors = validate_scoring(map, errors, mode)
@@ -30,82 +31,148 @@ defmodule PrivSignal.Config.Schema do
 
   defp validate_version(map, errors) do
     case get(map, :version) do
-      1 -> errors
-      nil -> ["version is required" | errors]
-      _ -> ["version must be 1" | errors]
+      1 ->
+        errors
+
+      nil ->
+        ["version is required" | errors]
+
+      other ->
+        ["unsupported schema version #{inspect(other)}; only version: 1 is supported" | errors]
     end
   end
 
-  defp validate_legacy_pii_modules(map, errors) do
-    if Map.has_key?(map, :pii_modules) or Map.has_key?(map, "pii_modules") do
-      ["pii_modules is deprecated; use pii entries with module/fields metadata" | errors]
+  defp reject_legacy_pii(_map, errors, :score), do: errors
+
+  defp reject_legacy_pii(map, errors, _mode) do
+    errors =
+      if Map.has_key?(map, :pii_modules) or Map.has_key?(map, "pii_modules") do
+        ["pii_modules is unsupported in v1; use prd_nodes" | errors]
+      else
+        errors
+      end
+
+    if Map.has_key?(map, :pii) or Map.has_key?(map, "pii") do
+      ["pii is unsupported in v1; use prd_nodes" | errors]
     else
       errors
     end
   end
 
-  defp validate_pii(map, errors) do
-    case get(map, :pii) do
+  defp validate_prd_nodes(map, errors, mode) do
+    case get(map, :prd_nodes) do
       nil ->
-        ["pii is required" | errors]
+        if mode == :score, do: errors, else: ["prd_nodes is required" | errors]
 
       list when is_list(list) ->
-        Enum.reduce(Enum.with_index(list), errors, fn {entry, idx}, acc ->
-          validate_pii_entry(entry, idx, acc)
-        end)
-
-      _ ->
-        ["pii must be a list" | errors]
-    end
-  end
-
-  defp validate_pii_entry(entry, idx, errors) when is_map(entry) do
-    errors =
-      case get(entry, :module) do
-        value when is_binary(value) and value != "" -> errors
-        _ -> ["pii[#{idx}].module must be a non-empty string" | errors]
-      end
-
-    case get(entry, :fields) do
-      fields when is_list(fields) and fields != [] ->
-        Enum.reduce(Enum.with_index(fields), errors, fn {field, field_idx}, acc ->
-          validate_pii_field(field, idx, field_idx, acc)
-        end)
-
-      _ ->
-        ["pii[#{idx}].fields must be a non-empty list" | errors]
-    end
-  end
-
-  defp validate_pii_entry(_, idx, errors), do: ["pii[#{idx}] must be a map" | errors]
-
-  defp validate_pii_field(field, idx, field_idx, errors) when is_map(field) do
-    errors =
-      case get(field, :name) do
-        value when is_binary(value) and value != "" -> errors
-        _ -> ["pii[#{idx}].fields[#{field_idx}].name must be a non-empty string" | errors]
-      end
-
-    errors =
-      case get(field, :category) do
-        value when is_binary(value) and value != "" -> errors
-        _ -> ["pii[#{idx}].fields[#{field_idx}].category must be a non-empty string" | errors]
-      end
-
-    case get(field, :sensitivity) do
-      nil ->
         errors
-
-      value when value in ["low", "medium", "high"] ->
-        errors
+        |> validate_prd_node_entries(list)
+        |> validate_unique_prd_keys(list)
 
       _ ->
-        ["pii[#{idx}].fields[#{field_idx}].sensitivity must be low, medium, or high" | errors]
+        ["prd_nodes must be a list" | errors]
     end
   end
 
-  defp validate_pii_field(_, idx, field_idx, errors) do
-    ["pii[#{idx}].fields[#{field_idx}] must be a map" | errors]
+  defp validate_prd_node_entries(errors, list) do
+    Enum.reduce(Enum.with_index(list), errors, fn {entry, idx}, acc ->
+      validate_prd_node(entry, idx, acc)
+    end)
+  end
+
+  defp validate_prd_node(entry, idx, errors) when is_map(entry) do
+    errors =
+      case get(entry, :key) do
+        value when is_binary(value) ->
+          if String.trim(value) == "",
+            do: ["prd_nodes[#{idx}].key must be a non-empty string" | errors],
+            else: errors
+
+        _ ->
+          ["prd_nodes[#{idx}].key must be a non-empty string" | errors]
+      end
+
+    errors =
+      case get(entry, :label) do
+        value when is_binary(value) ->
+          if String.trim(value) == "",
+            do: ["prd_nodes[#{idx}].label must be a non-empty string" | errors],
+            else: errors
+
+        _ ->
+          ["prd_nodes[#{idx}].label must be a non-empty string" | errors]
+      end
+
+    errors =
+      case get(entry, :class) do
+        value when is_binary(value) ->
+          if PRD.class?(value) do
+            errors
+          else
+            [
+              "prd_nodes[#{idx}].class must be one of: #{Enum.join(PRD.classes() |> Enum.sort(), ", ")}"
+              | errors
+            ]
+          end
+
+        _ ->
+          [
+            "prd_nodes[#{idx}].class must be one of: #{Enum.join(PRD.classes() |> Enum.sort(), ", ")}"
+            | errors
+          ]
+      end
+
+    errors =
+      case get(entry, :sensitive) do
+        value when is_boolean(value) -> errors
+        _ -> ["prd_nodes[#{idx}].sensitive must be a boolean" | errors]
+      end
+
+    case get(entry, :scope) do
+      scope when is_map(scope) ->
+        validate_prd_scope(scope, idx, errors)
+
+      _ ->
+        ["prd_nodes[#{idx}].scope must be a map" | errors]
+    end
+  end
+
+  defp validate_prd_node(_, idx, errors), do: ["prd_nodes[#{idx}] must be a map" | errors]
+
+  defp validate_prd_scope(scope, idx, errors) do
+    errors =
+      case get(scope, :module) do
+        value when is_binary(value) ->
+          if String.trim(value) == "",
+            do: ["prd_nodes[#{idx}].scope.module must be a non-empty string" | errors],
+            else: errors
+
+        _ ->
+          ["prd_nodes[#{idx}].scope.module must be a non-empty string" | errors]
+      end
+
+    case get(scope, :field) do
+      value when is_binary(value) ->
+        if String.trim(value) == "",
+          do: ["prd_nodes[#{idx}].scope.field must be a non-empty string" | errors],
+          else: errors
+
+      _ ->
+        ["prd_nodes[#{idx}].scope.field must be a non-empty string" | errors]
+    end
+  end
+
+  defp validate_unique_prd_keys(errors, list) do
+    keys =
+      list
+      |> Enum.map(&get(&1, :key))
+      |> Enum.filter(&(is_binary(&1) and String.trim(&1) != ""))
+
+    if length(keys) == length(Enum.uniq(keys)) do
+      errors
+    else
+      ["prd_nodes keys must be unique" | errors]
+    end
   end
 
   defp validate_flows(map, errors, mode) do

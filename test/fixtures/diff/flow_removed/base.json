@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.2",
+  "schema_version": "1",
   "summary": {},
   "nodes": [],
   "flows": [
@@ -7,11 +7,28 @@
       "id": "flow_legacy_enrollment_sync",
       "source": "Demo.User.email",
       "entrypoint": "Demo.Enrollment.sync/1",
-      "sink": {"kind": "http", "subtype": "LegacyAPI"},
+      "sink": {
+        "kind": "http",
+        "subtype": "LegacyAPI"
+      },
       "boundary": "external",
       "confidence": 0.7,
-      "evidence": ["node_9"]
+      "evidence": [
+        "node_9"
+      ]
     }
   ],
-  "errors": []
+  "errors": [],
+  "data_nodes": [
+    {
+      "key": "demo_user_email",
+      "name": "Demo.User.email",
+      "class": "direct_identifier",
+      "sensitive": false,
+      "scope": {
+        "module": "Demo.User",
+        "field": "email"
+      }
+    }
+  ]
 }

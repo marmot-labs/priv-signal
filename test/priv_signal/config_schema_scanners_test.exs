@@ -19,12 +19,13 @@ defmodule PrivSignal.ConfigSchemaScannersTest do
   test "accepts explicit scanners configuration" do
     config = %{
       "version" => 1,
-      "pii" => [
+      "prd_nodes" => [
         %{
-          "module" => "MyApp.Accounts.User",
-          "fields" => [
-            %{"name" => "email", "category" => "contact", "sensitivity" => "medium"}
-          ]
+          "key" => "user_email",
+          "label" => "User Email",
+          "class" => "direct_identifier",
+          "sensitive" => true,
+          "scope" => %{"module" => "MyApp.Accounts.User", "field" => "email"}
         }
       ],
       "flows" => [
@@ -67,12 +68,13 @@ defmodule PrivSignal.ConfigSchemaScannersTest do
   test "rejects malformed scanners configuration" do
     config = %{
       "version" => 1,
-      "pii" => [
+      "prd_nodes" => [
         %{
-          "module" => "MyApp.Accounts.User",
-          "fields" => [
-            %{"name" => "email", "category" => "contact", "sensitivity" => "medium"}
-          ]
+          "key" => "user_email",
+          "label" => "User Email",
+          "class" => "direct_identifier",
+          "sensitive" => true,
+          "scope" => %{"module" => "MyApp.Accounts.User", "field" => "email"}
         }
       ],
       "flows" => [],

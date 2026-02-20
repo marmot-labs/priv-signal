@@ -3,6 +3,11 @@ defmodule PrivSignal.Infer.Flow do
 
   defstruct id: nil,
             source: nil,
+            source_key: nil,
+            source_class: nil,
+            source_sensitive: false,
+            linked_refs: [],
+            linked_classes: [],
             entrypoint: nil,
             sink: %{},
             boundary: nil,

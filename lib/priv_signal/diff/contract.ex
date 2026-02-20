@@ -1,11 +1,12 @@
 defmodule PrivSignal.Diff.Contract do
   @moduledoc false
 
-  @supported_schema_versions MapSet.new(["1.1", "1.2"])
-  @required_artifact_keys [:schema_version, :flows]
+  @supported_schema_versions MapSet.new(["1"])
+  @required_artifact_keys [:schema_version, :data_nodes, :flows]
   @required_flow_keys [:id, :source, :entrypoint, :sink, :boundary]
+  @required_data_node_keys [:key, :name, :class, :sensitive, :scope]
   @optional_artifact_keys [:nodes]
-  @optional_flow_keys [:confidence, :evidence]
+  @optional_flow_keys [:confidence, :evidence, :source_key, :source_class, :source_sensitive]
 
   def supported_schema_versions, do: MapSet.to_list(@supported_schema_versions)
 
@@ -15,6 +16,7 @@ defmodule PrivSignal.Diff.Contract do
     with :ok <- validate_artifact_map(artifact),
          {:ok, schema_version} <- validate_schema_version(artifact),
          :ok <- validate_required_keys(artifact, @required_artifact_keys, :artifact),
+         :ok <- validate_data_nodes(artifact),
          {:ok, flows} <- validate_flows(artifact),
          :ok <- validate_flows_required(flows) do
       optional_paths = missing_optional_paths(artifact, flows)
@@ -71,6 +73,76 @@ defmodule PrivSignal.Diff.Contract do
     case get(artifact, :flows) do
       flows when is_list(flows) -> {:ok, flows}
       _ -> {:error, {:invalid_artifact_shape, %{reason: "flows must be a list"}}}
+    end
+  end
+
+  defp validate_data_nodes(artifact) do
+    case get(artifact, :data_nodes) do
+      nodes when is_list(nodes) ->
+        nodes
+        |> Enum.with_index()
+        |> Enum.reduce_while(:ok, fn {node, idx}, :ok ->
+          with :ok <- validate_data_node_map(node, idx),
+               :ok <- validate_required_keys(node, @required_data_node_keys, {:data_node, idx}),
+               :ok <- validate_data_scope(node, idx),
+               :ok <- validate_data_class(node, idx),
+               :ok <- validate_data_sensitive(node, idx) do
+            {:cont, :ok}
+          else
+            {:error, reason} -> {:halt, {:error, reason}}
+          end
+        end)
+
+      _ ->
+        {:error, {:invalid_artifact_shape, %{reason: "data_nodes must be a list"}}}
+    end
+  end
+
+  defp validate_data_node_map(node, _idx) when is_map(node), do: :ok
+
+  defp validate_data_node_map(_node, idx),
+    do: {:error, {:invalid_data_node_shape, %{index: idx, reason: "data node must be a map"}}}
+
+  defp validate_data_scope(node, idx) do
+    scope = get(node, :scope)
+
+    cond do
+      not is_map(scope) ->
+        {:error, {:invalid_data_scope, %{index: idx, reason: "scope must be a map"}}}
+
+      blank?(get(scope, :module)) ->
+        {:error,
+         {:invalid_data_scope, %{index: idx, reason: "scope.module must be a non-empty string"}}}
+
+      blank?(get(scope, :field)) ->
+        {:error,
+         {:invalid_data_scope, %{index: idx, reason: "scope.field must be a non-empty string"}}}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp validate_data_class(node, idx) do
+    class = get(node, :class)
+
+    if class in [
+         "direct_identifier",
+         "persistent_pseudonymous_identifier",
+         "behavioral_signal",
+         "inferred_attribute",
+         "sensitive_context_indicator"
+       ] do
+      :ok
+    else
+      {:error, {:invalid_data_class, %{index: idx, class: class}}}
+    end
+  end
+
+  defp validate_data_sensitive(node, idx) do
+    case get(node, :sensitive) do
+      value when is_boolean(value) -> :ok
+      _ -> {:error, {:invalid_data_sensitive, %{index: idx, reason: "sensitive must be boolean"}}}
     end
   end
 

@@ -9,7 +9,7 @@ defmodule PrivSignal.Config.LoaderTest do
 
     assert {:ok, config} = Loader.load(path)
     assert config.version == 1
-    assert length(config.pii) == 2
+    assert length(config.prd_nodes) == 2
     assert length(config.flows) == 1
     assert is_struct(config.scanners, PrivSignal.Config.Scanners)
     assert config.scanners.logging.enabled
@@ -21,17 +21,21 @@ defmodule PrivSignal.Config.LoaderTest do
     """
     version: 1
 
-    pii:
-      - module: MyApp.Accounts.User
-        fields:
-          - name: email
-            category: contact
-            sensitivity: medium
-      - module: MyApp.Accounts.Author
-        fields:
-          - name: email
-            category: contact
-            sensitivity: medium
+    prd_nodes:
+      - key: user_email
+        label: User Email
+        class: direct_identifier
+        sensitive: true
+        scope:
+          module: MyApp.Accounts.User
+          field: email
+      - key: author_email
+        label: Author Email
+        class: direct_identifier
+        sensitive: true
+        scope:
+          module: MyApp.Accounts.Author
+          field: email
 
     flows:
       - id: xapi_export

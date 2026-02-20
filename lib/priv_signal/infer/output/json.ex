@@ -9,6 +9,7 @@ defmodule PrivSignal.Infer.Output.JSON do
       tool: Map.get(result, :tool, %{}),
       git: Map.get(result, :git, %{}),
       summary: Map.get(result, :summary, %{}),
+      data_nodes: Enum.map(Map.get(result, :data_nodes, []), &render_data_node/1),
       nodes: Enum.map(Map.get(result, :nodes, []), &render_node/1),
       flows: Enum.map(Map.get(result, :flows, []), &render_flow/1),
       errors: Map.get(result, :errors, [])
@@ -19,7 +20,7 @@ defmodule PrivSignal.Infer.Output.JSON do
     %{
       id: Map.get(node, :id),
       node_type: Map.get(node, :node_type),
-      pii: Map.get(node, :pii, []),
+      data_refs: Enum.map(Map.get(node, :data_refs, []), &render_data_ref/1),
       code_context: render_code_context(Map.get(node, :code_context, %{})),
       role: render_role(Map.get(node, :role, %{})),
       entrypoint_context: render_entrypoint_context(Map.get(node, :entrypoint_context)),
@@ -56,6 +57,11 @@ defmodule PrivSignal.Infer.Output.JSON do
     %{
       id: Map.get(flow, :id),
       source: Map.get(flow, :source),
+      source_key: Map.get(flow, :source_key),
+      source_class: Map.get(flow, :source_class),
+      source_sensitive: Map.get(flow, :source_sensitive),
+      linked_refs: Map.get(flow, :linked_refs),
+      linked_classes: Map.get(flow, :linked_classes),
       entrypoint: Map.get(flow, :entrypoint),
       sink: render_flow_sink(Map.get(flow, :sink, %{})),
       boundary: Map.get(flow, :boundary),
@@ -69,6 +75,34 @@ defmodule PrivSignal.Infer.Output.JSON do
     %{
       kind: Map.get(sink, :kind),
       subtype: Map.get(sink, :subtype)
+    }
+    |> compact_map()
+  end
+
+  defp render_data_node(data_node) when is_map(data_node) do
+    %{
+      key: Map.get(data_node, :key),
+      name: Map.get(data_node, :label) || Map.get(data_node, :name),
+      class: Map.get(data_node, :class),
+      sensitive: Map.get(data_node, :sensitive) == true,
+      confidence: Map.get(data_node, :confidence),
+      rationale: Map.get(data_node, :rationale),
+      evidence: Map.get(data_node, :evidence, []),
+      scope: %{
+        module: Map.get(data_node, :module) || get_in(data_node, [:scope, :module]),
+        field: Map.get(data_node, :field) || get_in(data_node, [:scope, :field])
+      }
+    }
+    |> compact_map()
+  end
+
+  defp render_data_ref(data_ref) when is_map(data_ref) do
+    %{
+      reference: Map.get(data_ref, :reference),
+      key: Map.get(data_ref, :key),
+      label: Map.get(data_ref, :label),
+      class: Map.get(data_ref, :class),
+      sensitive: Map.get(data_ref, :sensitive) == true
     }
     |> compact_map()
   end

@@ -13,7 +13,7 @@ defmodule Mix.Tasks.PrivSignal.InitTest do
 
       assert File.exists?("priv-signal.yml")
       content = File.read!("priv-signal.yml")
-      assert String.contains?(content, "pii:")
+      assert String.contains?(content, "prd_nodes:")
       assert String.contains?(content, "scanners:")
       assert String.contains?(content, "logging:")
       assert String.contains?(content, "http:")

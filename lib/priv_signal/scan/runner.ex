@@ -71,15 +71,17 @@ defmodule PrivSignal.Scan.Runner do
     result = %{
       scanner_version: @scanner_version,
       summary: %{
-        confirmed_count: Enum.count(findings, &(&1.classification == :confirmed_pii)),
-        possible_count: Enum.count(findings, &(&1.classification == :possible_pii)),
+        confirmed_count: Enum.count(findings, &(&1.classification == :confirmed_prd)),
+        possible_count: Enum.count(findings, &(&1.classification == :possible_prd)),
         high_sensitivity_count: Enum.count(findings, &(&1.sensitivity == :high)),
+        class_counts: class_counts(findings),
         files_scanned: length(files),
         errors: length(errors)
       },
       inventory: %{
         modules: inventory.modules |> MapSet.to_list() |> Enum.sort(),
-        field_count: length(inventory.fields)
+        node_count: length(inventory.data_nodes),
+        data_nodes: inventory.data_nodes
       },
       findings: findings,
       errors: Enum.sort_by(errors, &{&1.file || "", &1.reason || ""})
@@ -262,7 +264,7 @@ defmodule PrivSignal.Scan.Runner do
     PrivSignal.Telemetry.emit(
       [:priv_signal, :scan, :inventory, :build],
       %{duration_ms: duration_ms},
-      %{module_count: MapSet.size(inventory.modules), field_count: length(inventory.fields)}
+      %{module_count: MapSet.size(inventory.modules), node_count: length(inventory.data_nodes)}
     )
   end
 
@@ -354,5 +356,13 @@ defmodule PrivSignal.Scan.Runner do
         _ -> acc
       end
     end)
+  end
+
+  defp class_counts(findings) do
+    findings
+    |> Enum.flat_map(&(&1.data_classes || []))
+    |> Enum.frequencies()
+    |> Enum.sort()
+    |> Map.new()
   end
 end

@@ -50,14 +50,24 @@ defmodule PrivSignal.Diff.SemanticV2 do
 
   defp map_event_type(%{type: "flow_added"}), do: "edge_added"
   defp map_event_type(%{type: "flow_removed"}), do: "edge_removed"
+  defp map_event_type(%{type: "data_node_added"}), do: "node_added"
   defp map_event_type(%{type: "confidence_changed"}), do: "edge_updated"
   defp map_event_type(%{type: "flow_changed", change: "boundary_changed"}), do: "boundary_changed"
 
   defp map_event_type(%{type: "flow_changed", change: "external_sink_added"}),
     do: "destination_changed"
 
-  defp map_event_type(%{type: "flow_changed", change: "external_sink_added_removed"}),
+  defp map_event_type(%{type: "flow_changed", change: "external_sink_changed"}),
     do: "destination_changed"
+
+  defp map_event_type(%{type: "flow_changed", change: "inferred_attribute_external_transfer"}),
+    do: "destination_changed"
+
+  defp map_event_type(%{type: "flow_changed", change: "sensitive_context_linkage_added"}),
+    do: "transform_changed"
+
+  defp map_event_type(%{type: "flow_changed", change: "behavioral_signal_persisted"}),
+    do: "sensitivity_changed"
 
   defp map_event_type(%{type: "flow_changed", change: "pii_fields_expanded"}),
     do: "sensitivity_changed"
@@ -92,6 +102,7 @@ defmodule PrivSignal.Diff.SemanticV2 do
 
   defp sensitivity_before(%{change: "pii_fields_reduced"}, _details), do: "medium"
   defp sensitivity_before(%{change: "pii_fields_expanded"}, _details), do: "low"
+  defp sensitivity_before(%{change: "behavioral_signal_persisted"}, _details), do: "low"
   defp sensitivity_before(_, _), do: "low"
 
   defp sensitivity_after(%{change: "pii_fields_expanded"} = change, details) do
@@ -109,6 +120,8 @@ defmodule PrivSignal.Diff.SemanticV2 do
   end
 
   defp sensitivity_after(%{change: "pii_fields_reduced"}, _details), do: "low"
+  defp sensitivity_after(%{change: "behavioral_signal_persisted"}, _details), do: "medium"
+  defp sensitivity_after(%{change: "sensitive_context_linkage_added"}, _details), do: "high"
   defp sensitivity_after(%{severity: "high"}, _details), do: "high"
   defp sensitivity_after(%{severity: "medium"}, _details), do: "medium"
   defp sensitivity_after(_change, _details), do: "low"
@@ -116,8 +129,11 @@ defmodule PrivSignal.Diff.SemanticV2 do
   defp destination(%{change: "external_sink_added"} = _change, details),
     do: sink_to_destination(fetch(details, :after_sink, %{}))
 
-  defp destination(%{change: "external_sink_added_removed"} = _change, details),
+  defp destination(%{change: "external_sink_changed"} = _change, details),
     do: sink_to_destination(fetch(details, :after_sink, %{}))
+
+  defp destination(%{change: "inferred_attribute_external_transfer"} = _change, details),
+    do: sink_to_destination(fetch(details, :sink, %{}))
 
   defp destination(%{type: "flow_added"}, details),
     do: sink_to_destination(fetch(details, :sink, %{}))
@@ -149,6 +165,32 @@ defmodule PrivSignal.Diff.SemanticV2 do
   defp pii_delta(%{change: "pii_fields_reduced"}, details) do
     fields = fetch(details, :removed_fields, [])
     %{"added_categories" => [], "added_fields" => [], "removed_fields" => fields}
+  end
+
+  defp pii_delta(%{change: "new_inferred_attribute"}, details) do
+    class = fetch(details, :class, "inferred_attribute")
+    %{"added_categories" => [class], "added_fields" => [fetch(details, :key)]}
+  end
+
+  defp pii_delta(%{change: "behavioral_signal_persisted"}, details) do
+    %{
+      "added_categories" => [fetch(details, :source_class, "behavioral_signal")],
+      "added_fields" => [fetch(details, :source_key)]
+    }
+  end
+
+  defp pii_delta(%{change: "inferred_attribute_external_transfer"}, details) do
+    %{
+      "added_categories" => [fetch(details, :source_class, "inferred_attribute")],
+      "added_fields" => [fetch(details, :source_key)]
+    }
+  end
+
+  defp pii_delta(%{change: "sensitive_context_linkage_added"}, details) do
+    %{
+      "added_categories" => fetch(details, :linked_classes, []),
+      "added_fields" => fetch(details, :linked_refs, [])
+    }
   end
 
   defp pii_delta(_, _), do: %{"added_categories" => [], "added_fields" => []}

@@ -25,7 +25,7 @@ defmodule PrivSignal.Infer.NodeIdentity do
       normalized.code_context.function || "",
       normalized.code_context.file_path || "",
       normalize_role_kind(normalized.role.kind),
-      canonical_references(normalized.pii)
+      canonical_references(normalized.data_refs)
     ]
   end
 
@@ -40,8 +40,8 @@ defmodule PrivSignal.Infer.NodeIdentity do
 
   defp normalize_role_kind(_), do: ""
 
-  defp canonical_references(pii) when is_list(pii) do
-    pii
+  defp canonical_references(data_refs) when is_list(data_refs) do
+    data_refs
     |> Enum.map(fn entry ->
       get(entry, :reference)
     end)

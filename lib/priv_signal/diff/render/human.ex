@@ -74,23 +74,38 @@ defmodule PrivSignal.Diff.Render.Human do
     "- External sink added: #{change.flow_id} (sink: #{after_sink}) [#{change.rule_id}]"
   end
 
-  defp render_change(%{type: "flow_changed", change: "external_sink_added_removed"} = change) do
+  defp render_change(%{type: "flow_changed", change: "external_sink_changed"} = change) do
     details = Map.get(change, :details, %{})
     before_sink = format_sink(Map.get(details, :before_sink))
     after_sink = format_sink(Map.get(details, :after_sink))
     "- Sink changed: #{change.flow_id} (#{before_sink} -> #{after_sink}) [#{change.rule_id}]"
   end
 
-  defp render_change(%{type: "flow_changed", change: "pii_fields_expanded"} = change) do
+  defp render_change(%{type: "data_node_added", change: "new_inferred_attribute"} = change) do
     details = Map.get(change, :details, %{})
-    fields = Map.get(details, :added_fields, []) |> Enum.join(", ")
-    "- PII fields expanded: #{change.flow_id} (added: #{fields}) [#{change.rule_id}]"
+    "- New inferred attribute: #{Map.get(details, :key, "unknown")} [#{change.rule_id}]"
   end
 
-  defp render_change(%{type: "flow_changed", change: "pii_fields_reduced"} = change) do
+  defp render_change(%{type: "flow_changed", change: "behavioral_signal_persisted"} = change) do
     details = Map.get(change, :details, %{})
-    fields = Map.get(details, :removed_fields, []) |> Enum.join(", ")
-    "- PII fields reduced: #{change.flow_id} (removed: #{fields}) [#{change.rule_id}]"
+
+    "- Behavioral signal persisted: #{change.flow_id} (source: #{Map.get(details, :source)}) [#{change.rule_id}]"
+  end
+
+  defp render_change(
+         %{type: "flow_changed", change: "inferred_attribute_external_transfer"} = change
+       ) do
+    details = Map.get(change, :details, %{})
+    sink = format_sink(Map.get(details, :sink))
+
+    "- Inferred attribute transferred externally: #{change.flow_id} (sink: #{sink}) [#{change.rule_id}]"
+  end
+
+  defp render_change(%{type: "flow_changed", change: "sensitive_context_linkage_added"} = change) do
+    details = Map.get(change, :details, %{})
+    linked = Map.get(details, :linked_classes, []) |> Enum.join(", ")
+
+    "- Sensitive context linkage added: #{change.flow_id} (linked_classes: #{linked}) [#{change.rule_id}]"
   end
 
   defp render_change(change) do

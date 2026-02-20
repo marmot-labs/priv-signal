@@ -11,7 +11,7 @@ defmodule PrivSignal.Validate do
   """
   def run(config, opts \\ []) do
     index_opts = Keyword.get(opts, :index, [])
-    pii_modules = PrivSignal.Config.PII.modules(config)
+    prd_modules = PrivSignal.Config.PRD.modules(config)
     flows = config.flows || []
     flow_count = length(flows) + 1
     # Build one index per run to keep validation deterministic and fast.
@@ -21,9 +21,9 @@ defmodule PrivSignal.Validate do
 
     result =
       with {:ok, index} <- Index.build(index_opts) do
-        pii_result = validate_pii_modules(pii_modules, index)
+        prd_result = validate_prd_modules(prd_modules, index)
         flow_results = Enum.map(flows, &validate_flow(&1, index))
-        results = [pii_result | flow_results]
+        results = [prd_result | flow_results]
         {:ok, results}
       end
 
@@ -52,22 +52,22 @@ defmodule PrivSignal.Validate do
     %Result{flow_id: flow_id, status: status, errors: errors}
   end
 
-  defp validate_pii_modules(pii_modules, index) do
+  defp validate_prd_modules(prd_modules, index) do
     errors =
-      pii_modules
+      prd_modules
       |> Enum.map(&normalize_module/1)
       |> Enum.uniq()
       |> Enum.reduce([], fn module, acc ->
         if module_exists?(index, module) do
           acc
         else
-          [Error.missing_pii_module(module) | acc]
+          [Error.missing_prd_module(module) | acc]
         end
       end)
       |> Enum.reverse()
 
     status = if errors == [], do: :ok, else: :error
-    %Result{flow_id: "pii", status: status, errors: errors}
+    %Result{flow_id: "prd_nodes", status: status, errors: errors}
   end
 
   defp validate_modules(steps, index, flow_id) do

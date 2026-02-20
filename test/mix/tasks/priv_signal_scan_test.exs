@@ -65,7 +65,7 @@ defmodule Mix.Tasks.PrivSignal.ScanTest do
 
       errors = collect_errors([])
       assert Enum.any?(errors, &String.contains?(&1, "priv-signal.yml is invalid"))
-      assert Enum.any?(errors, &String.contains?(&1, "pii_modules is deprecated"))
+      assert Enum.any?(errors, &String.contains?(&1, "pii_modules is unsupported"))
     end)
   end
 
@@ -138,12 +138,14 @@ defmodule Mix.Tasks.PrivSignal.ScanTest do
     """
     version: 1
 
-    pii:
-      - module: Demo.User
-        fields:
-          - name: email
-            category: contact
-            sensitivity: high
+    prd_nodes:
+      - key: demo_user_email
+        label: Demo User Email
+        class: direct_identifier
+        sensitive: true
+        scope:
+          module: Demo.User
+          field: email
 
     flows: []
     """
@@ -155,6 +157,7 @@ defmodule Mix.Tasks.PrivSignal.ScanTest do
 
     pii_modules:
       - Demo.User
+    prd_nodes: []
 
     flows: []
     """

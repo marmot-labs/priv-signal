@@ -80,7 +80,7 @@ defmodule PrivSignal.Scan.Scanner.Logging do
       acc
     else
       line = sink_line(sink_call_node)
-      matched_fields = matched_fields(evidence)
+      matched_nodes = matched_nodes(evidence)
 
       finding = %{
         module: module_name,
@@ -89,7 +89,8 @@ defmodule PrivSignal.Scan.Scanner.Logging do
         file: path,
         line: line,
         sink: sink,
-        matched_fields: matched_fields,
+        matched_nodes: matched_nodes,
+        matched_fields: matched_nodes,
         evidence: evidence
       }
 
@@ -175,8 +176,8 @@ defmodule PrivSignal.Scan.Scanner.Logging do
         []
 
       module ->
-        if Inventory.pii_module?(inventory, module) do
-          inventory.fields_by_module
+        if Inventory.prd_module?(inventory, module) do
+          inventory.nodes_by_module
           |> Map.get(module, [])
         else
           []
@@ -198,7 +199,7 @@ defmodule PrivSignal.Scan.Scanner.Logging do
 
   defp evidence_type({{:., _, [_receiver, _field]}, _, []}), do: :direct_field_access
   defp evidence_type({:%{}, _, _}), do: :key_match
-  defp evidence_type({:%, _, _}), do: :pii_container
+  defp evidence_type({:%, _, _}), do: :prd_container
   defp evidence_type({:inspect, _, [_]}), do: :bulk_inspect
   defp evidence_type(_), do: :unknown
 
@@ -229,9 +230,9 @@ defmodule PrivSignal.Scan.Scanner.Logging do
     "keyword_keys:" <> Enum.join(keys, ",")
   end
 
-  defp evidence_expression({:%, _, [module_ast, _map_ast]}, :pii_container) do
+  defp evidence_expression({:%, _, [module_ast, _map_ast]}, :prd_container) do
     module = Utils.module_name(module_ast) || "unknown"
-    "pii_container:" <> module
+    "prd_container:" <> module
   end
 
   defp evidence_expression({:inspect, _, [arg]}, :bulk_inspect) do
@@ -261,11 +262,11 @@ defmodule PrivSignal.Scan.Scanner.Logging do
     end
   end
 
-  defp matched_fields(evidence) do
+  defp matched_nodes(evidence) do
     evidence
     |> Enum.flat_map(& &1.fields)
     |> Enum.uniq()
-    |> Enum.sort_by(&{&1.module, &1.name, &1.category, &1.sensitivity})
+    |> Enum.sort_by(&{&1.module, &1.field || &1.name, &1.class || &1.category, &1.key})
   end
 
   defp dedupe_evidence(evidence) do

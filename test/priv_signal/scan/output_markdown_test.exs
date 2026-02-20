@@ -7,7 +7,7 @@ defmodule PrivSignal.Scan.Output.MarkdownTest do
   test "renders summary, findings, and operational errors" do
     finding = %Finding{
       id: "abc123",
-      classification: :confirmed_pii,
+      classification: :confirmed_prd,
       confidence: :confirmed,
       sensitivity: :high,
       module: "MyApp.Auth",
@@ -16,7 +16,7 @@ defmodule PrivSignal.Scan.Output.MarkdownTest do
       file: "lib/my_app/auth.ex",
       line: 84,
       sink: "Logger.info",
-      matched_fields: [%{name: "email"}]
+      matched_nodes: [%{field: "email"}]
     }
 
     result = %{
@@ -34,7 +34,7 @@ defmodule PrivSignal.Scan.Output.MarkdownTest do
 
     output = Markdown.render(result)
 
-    assert String.contains?(output, "PrivSignal PII Scan")
+    assert String.contains?(output, "PrivSignal PRD Scan")
     assert String.contains?(output, "Confirmed findings:** 1")
     assert String.contains?(output, "[HIGH]")
     assert String.contains?(output, "lib/bad.ex: failed to parse")

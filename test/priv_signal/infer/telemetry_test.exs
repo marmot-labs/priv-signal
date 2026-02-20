@@ -57,7 +57,7 @@ defmodule PrivSignal.Infer.TelemetryTest do
     assert is_boolean(metadata3.ok)
     assert is_boolean(metadata3.strict_mode)
     assert is_boolean(metadata3.proto_flows_enabled)
-    assert metadata3.schema_version == "1.2"
+    assert metadata3.schema_version == "1"
     assert metadata3.determinism_hash_changed == 0
 
     assert_received {:telemetry, [:priv_signal, :infer, :output, :write], measurements4,
@@ -66,7 +66,7 @@ defmodule PrivSignal.Infer.TelemetryTest do
     assert measurements4.duration_ms >= 0
     assert metadata4.ok == true
     assert metadata4.format == :json
-    assert metadata4.schema_version == "1.2"
+    assert metadata4.schema_version == "1"
   after
     :telemetry.detach("priv_signal-infer-test")
   end

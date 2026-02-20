@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.2",
+  "schema_version": "1",
   "summary": {},
   "nodes": [],
   "flows": [
@@ -7,11 +7,28 @@
       "id": "flow_analytics_event",
       "source": "Demo.User.user_id",
       "entrypoint": "Demo.Analytics.track/1",
-      "sink": {"kind": "http", "subtype": "MetricsAPI.send"},
+      "sink": {
+        "kind": "http",
+        "subtype": "MetricsAPI.send"
+      },
       "boundary": "external",
       "confidence": 0.6,
-      "evidence": ["node_c"]
+      "evidence": [
+        "node_c"
+      ]
     }
   ],
-  "errors": []
+  "errors": [],
+  "data_nodes": [
+    {
+      "key": "demo_user_user_id",
+      "name": "Demo.User.user_id",
+      "class": "direct_identifier",
+      "sensitive": false,
+      "scope": {
+        "module": "Demo.User",
+        "field": "user_id"
+      }
+    }
+  ]
 }

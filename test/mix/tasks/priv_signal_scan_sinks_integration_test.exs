@@ -44,12 +44,14 @@ defmodule Mix.Tasks.PrivSignal.ScanSinksIntegrationTest do
       """
       version: 1
 
-      pii:
-        - module: Demo.User
-          fields:
-            - name: email
-              category: contact
-              sensitivity: high
+      prd_nodes:
+        - key: demo_user_email
+          label: Demo User Email
+          class: direct_identifier
+          sensitive: true
+          scope:
+            module: Demo.User
+            field: email
 
       scanners:
         http:

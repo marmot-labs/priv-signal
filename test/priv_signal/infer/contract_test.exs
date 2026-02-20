@@ -5,10 +5,11 @@ defmodule PrivSignal.Infer.ContractTest do
 
   test "artifact contract requires schema envelope keys" do
     artifact = %{
-      schema_version: "1.2",
+      schema_version: "1",
       tool: %{name: "priv_signal", version: "0.1.0"},
       git: %{commit: "abc123"},
       summary: %{node_count: 1, error_count: 0},
+      data_nodes: [data_node_fixture()],
       nodes: [node_fixture()],
       flows: [flow_fixture()],
       errors: []
@@ -61,7 +62,9 @@ defmodule PrivSignal.Infer.ContractTest do
               lines: [idx]
             },
             role: %{kind: if(rem(idx, 2) == 0, do: "logger", else: "controller")},
-            pii: [%{reference: "MyApp.User.email", category: "contact", sensitivity: "medium"}]
+            data_refs: [
+              %{reference: "MyApp.User.email", class: "direct_identifier", sensitive: true}
+            ]
           })
 
         Map.put(node, :id, NodeIdentity.id(node))
@@ -77,10 +80,11 @@ defmodule PrivSignal.Infer.ContractTest do
 
   test "artifact contract remains inference-agnostic" do
     artifact = %{
-      schema_version: "1.2",
+      schema_version: "1",
       tool: %{name: "priv_signal", version: "0.1.0"},
       git: %{commit: "abc123"},
       summary: %{node_count: 1, error_count: 0},
+      data_nodes: [data_node_fixture()],
       nodes: [node_fixture()],
       flows: [flow_fixture()],
       errors: []
@@ -101,18 +105,18 @@ defmodule PrivSignal.Infer.ContractTest do
     default = %{
       id: "psn_seed",
       node_type: :sink,
-      pii: [%{reference: "MyApp.User.email", category: "contact", sensitivity: "medium"}],
+      data_refs: [%{reference: "MyApp.User.email", class: "direct_identifier", sensitive: true}],
       code_context: %{
         module: "MyApp.Accounts",
         function: "log_signup/2",
         file_path: "lib/my_app/accounts.ex",
         lines: [42]
       },
-      role: %{kind: "logger", subtype: "Logger.info"},
+      role: %{kind: "logger", callee: "Logger.info"},
       confidence: 1.0,
       evidence: [
-        %{rule: "logging_pii", signal: "logger_call_with_email", line: 42, ast_kind: "call"},
-        %{rule: "logging_pii", signal: "pii_field_match", line: 42, ast_kind: "access"}
+        %{rule: "logging_prd", signal: "logger_call_with_email", line: 42, ast_kind: "call"},
+        %{rule: "logging_prd", signal: "field_match", line: 42, ast_kind: "access"}
       ]
     }
 
@@ -131,5 +135,15 @@ defmodule PrivSignal.Infer.ContractTest do
     }
 
     Map.merge(default, overrides)
+  end
+
+  defp data_node_fixture do
+    %{
+      key: "user_email",
+      name: "User Email",
+      class: "direct_identifier",
+      sensitive: true,
+      scope: %{module: "MyApp.User", field: "email"}
+    }
   end
 end

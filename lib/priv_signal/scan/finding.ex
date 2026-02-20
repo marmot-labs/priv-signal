@@ -6,6 +6,7 @@ defmodule PrivSignal.Scan.Finding do
             confidence: nil,
             confidence_hint: nil,
             sensitivity: nil,
+            data_classes: [],
             module: nil,
             function: nil,
             arity: nil,
@@ -16,6 +17,7 @@ defmodule PrivSignal.Scan.Finding do
             role_subtype: nil,
             boundary: nil,
             sink: nil,
+            matched_nodes: [],
             matched_fields: [],
             evidence: []
 end

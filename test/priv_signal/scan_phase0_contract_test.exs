@@ -15,10 +15,10 @@ defmodule PrivSignal.ScanPhase0ContractTest do
     assert File.exists?(fixture_path("config/deprecated_pii_modules.yml"))
   end
 
-  test "valid pii config fixture is pii-only" do
+  test "valid fixture includes prd_nodes and excludes pii_modules" do
     assert {:ok, config} = YamlElixir.read_from_file(fixture_path("config/valid_pii.yml"))
 
-    assert is_list(config["pii"])
+    assert is_list(config["prd_nodes"])
     refute Map.has_key?(config, "pii_modules")
   end
 
@@ -26,7 +26,7 @@ defmodule PrivSignal.ScanPhase0ContractTest do
     {:ok, config} = YamlElixir.read_from_file(fixture_path("config/deprecated_pii_modules.yml"))
 
     assert {:error, errors} = PrivSignal.Config.Schema.validate(config)
-    assert Enum.any?(errors, &String.contains?(&1, "pii_modules is deprecated"))
+    assert Enum.any?(errors, &String.contains?(&1, "pii_modules is unsupported"))
   end
 
   test "scanner json output contract includes required top-level keys" do
@@ -39,7 +39,7 @@ defmodule PrivSignal.ScanPhase0ContractTest do
         files_scanned: 0,
         errors: 0
       },
-      inventory: %{modules: [], field_count: 0},
+      inventory: %{modules: [], node_count: 0},
       findings: [],
       errors: []
     }
@@ -69,9 +69,9 @@ defmodule PrivSignal.ScanPhase0ContractTest do
 
     markdown = PrivSignal.Scan.Output.Markdown.render(result)
 
-    assert String.contains?(markdown, "PrivSignal PII Scan")
+    assert String.contains?(markdown, "PrivSignal PRD Scan")
     assert String.contains?(markdown, "Scanner version")
-    assert String.contains?(markdown, "No PII-relevant logging findings detected.")
+    assert String.contains?(markdown, "No PRD-relevant scanner findings detected.")
   end
 
   defp fixture_path(relative_path), do: Path.join(@fixture_root, relative_path)

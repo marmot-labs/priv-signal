@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.2",
+  "schema_version": "1",
   "summary": {},
   "nodes": [],
   "flows": [
@@ -7,11 +7,29 @@
       "id": "flow_export_roster_csv",
       "source": "Demo.User.student_id",
       "entrypoint": "DemoWeb.RosterController.export/2",
-      "sink": {"kind": "s3", "subtype": "RosterBucket"},
+      "sink": {
+        "kind": "s3",
+        "subtype": "RosterBucket"
+      },
       "boundary": "external",
       "confidence": 0.95,
-      "evidence": ["node_1", "node_2"]
+      "evidence": [
+        "node_1",
+        "node_2"
+      ]
     }
   ],
-  "errors": []
+  "errors": [],
+  "data_nodes": [
+    {
+      "key": "demo_user_student_id",
+      "name": "Demo.User.student_id",
+      "class": "direct_identifier",
+      "sensitive": false,
+      "scope": {
+        "module": "Demo.User",
+        "field": "student_id"
+      }
+    }
+  ]
 }

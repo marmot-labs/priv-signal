@@ -1,9 +1,11 @@
 version: 1
 
-pii:
-  - module: Fixtures.Scan.User
-    fields:
-      - category: contact
-        sensitivity: medium
+prd_nodes:
+  - key: user_email
+    label: User Email
+    class: direct_identifier
+    sensitive: true
+    scope:
+      module: Fixtures.Scan.User
 
 flows: []

@@ -219,7 +219,16 @@ defmodule PrivSignal.Diff.ArtifactLoaderTest do
   test "strict mode surfaces missing optional sections as contract failure" do
     minimal_artifact_json =
       Jason.encode!(%{
-        "schema_version" => "1.2",
+        "schema_version" => "1",
+        "data_nodes" => [
+          %{
+            "key" => "demo_user_email",
+            "name" => "Demo User Email",
+            "class" => "direct_identifier",
+            "sensitive" => false,
+            "scope" => %{"module" => "Demo.User", "field" => "email"}
+          }
+        ],
         "flows" => [
           %{
             "id" => "flow_1",

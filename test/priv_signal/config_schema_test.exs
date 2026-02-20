@@ -6,12 +6,13 @@ defmodule PrivSignal.Config.SchemaTest do
   test "validates a well-formed config" do
     map = %{
       "version" => 1,
-      "pii" => [
+      "prd_nodes" => [
         %{
-          "module" => "MyApp.Accounts.User",
-          "fields" => [
-            %{"name" => "email", "category" => "contact", "sensitivity" => "medium"}
-          ]
+          "key" => "user_email",
+          "label" => "User Email",
+          "class" => "direct_identifier",
+          "sensitive" => true,
+          "scope" => %{"module" => "MyApp.Accounts.User", "field" => "email"}
         }
       ],
       "flows" => [
@@ -31,28 +32,21 @@ defmodule PrivSignal.Config.SchemaTest do
 
     assert {:ok, config} = Schema.validate(map)
     assert config.version == 1
-    assert length(config.pii) == 1
+    assert length(config.prd_nodes) == 1
     assert length(config.flows) == 1
   end
 
   test "returns errors for missing fields" do
     assert {:error, errors} = Schema.validate(%{})
     assert "version is required" in errors
-    assert "pii is required" in errors
+    assert "prd_nodes is required" in errors
     assert "flows is required" in errors
   end
 
   test "allows missing flows in score mode" do
     map = %{
       "version" => 1,
-      "pii" => [
-        %{
-          "module" => "MyApp.Accounts.User",
-          "fields" => [
-            %{"name" => "email", "category" => "contact", "sensitivity" => "medium"}
-          ]
-        }
-      ]
+      "prd_nodes" => []
     }
 
     assert {:ok, config} = Schema.validate(map, mode: :score)
@@ -63,14 +57,7 @@ defmodule PrivSignal.Config.SchemaTest do
     map = %{
       "version" => 1,
       "pii_modules" => ["MyApp.Accounts.User"],
-      "pii" => [
-        %{
-          "module" => "MyApp.Accounts.User",
-          "fields" => [
-            %{"name" => "email", "category" => "contact", "sensitivity" => "medium"}
-          ]
-        }
-      ],
+      "prd_nodes" => [],
       "flows" => []
     }
 
@@ -78,19 +65,20 @@ defmodule PrivSignal.Config.SchemaTest do
 
     assert Enum.any?(
              errors,
-             &String.contains?(&1, "pii_modules is deprecated")
+             &String.contains?(&1, "pii_modules is unsupported")
            )
   end
 
   test "accepts scoring config overrides" do
     map = %{
       "version" => 1,
-      "pii" => [
+      "prd_nodes" => [
         %{
-          "module" => "MyApp.Accounts.User",
-          "fields" => [
-            %{"name" => "email", "category" => "contact", "sensitivity" => "medium"}
-          ]
+          "key" => "user_email",
+          "label" => "User Email",
+          "class" => "direct_identifier",
+          "sensitive" => true,
+          "scope" => %{"module" => "MyApp.Accounts.User", "field" => "email"}
         }
       ],
       "flows" => [],
@@ -114,12 +102,13 @@ defmodule PrivSignal.Config.SchemaTest do
   test "rejects invalid scoring threshold ordering" do
     map = %{
       "version" => 1,
-      "pii" => [
+      "prd_nodes" => [
         %{
-          "module" => "MyApp.Accounts.User",
-          "fields" => [
-            %{"name" => "email", "category" => "contact", "sensitivity" => "medium"}
-          ]
+          "key" => "user_email",
+          "label" => "User Email",
+          "class" => "direct_identifier",
+          "sensitive" => true,
+          "scope" => %{"module" => "MyApp.Accounts.User", "field" => "email"}
         }
       ],
       "flows" => [],

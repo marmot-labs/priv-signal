@@ -2,30 +2,28 @@ defmodule PrivSignal.Config.Summary do
   @moduledoc false
 
   alias PrivSignal.Config
-  alias PrivSignal.Config.PII
+  alias PrivSignal.Config.PRD
 
   def build(%Config{} = config) do
     %{
       version: config.version,
-      pii: Enum.map(PII.entries(config), &pii_entry_summary/1),
-      pii_modules: PII.modules(config),
+      prd_nodes: Enum.map(PRD.entries(config), &prd_node_summary/1),
+      prd_modules: PRD.modules(config),
       scanners: scanners_summary(config),
       flows: Enum.map(config.flows, &flow_summary/1)
     }
   end
 
-  defp pii_entry_summary(entry) do
+  defp prd_node_summary(entry) do
     %{
-      module: entry.module,
-      fields: Enum.map(entry.fields || [], &pii_field_summary/1)
-    }
-  end
-
-  defp pii_field_summary(field) do
-    %{
-      name: field.name,
-      category: field.category,
-      sensitivity: field.sensitivity
+      key: entry.key,
+      label: entry.label,
+      class: entry.class,
+      sensitive: entry.sensitive,
+      scope: %{
+        module: entry.scope && entry.scope.module,
+        field: entry.scope && entry.scope.field
+      }
     }
   end
 

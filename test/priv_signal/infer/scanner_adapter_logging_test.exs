@@ -26,9 +26,9 @@ defmodule PrivSignal.Infer.ScannerAdapter.LoggingTest do
              &(&1.signal == "direct_field_access" and &1.finding_id == "legacy_id")
            )
 
-    assert Enum.any?(node.evidence, &(&1.rule == "logger_pii"))
+    assert Enum.any?(node.evidence, &(&1.rule == "logger_prd"))
 
-    assert Enum.any?(node.pii, &(&1.reference == "MyApp.User.email"))
+    assert Enum.any?(node.data_refs, &(&1.reference == "MyApp.User.email"))
   end
 
   test "optionally emits standalone entrypoint nodes" do
@@ -49,7 +49,7 @@ defmodule PrivSignal.Infer.ScannerAdapter.LoggingTest do
   defp sample_finding(module_name, file_path) do
     %Finding{
       id: "legacy_id",
-      classification: :confirmed_pii,
+      classification: :confirmed_prd,
       confidence: :confirmed,
       sensitivity: :high,
       module: module_name,
@@ -58,14 +58,22 @@ defmodule PrivSignal.Infer.ScannerAdapter.LoggingTest do
       file: file_path,
       line: 12,
       sink: "Logger.info",
-      matched_fields: [
-        %{module: "MyApp.User", name: "email", category: "contact", sensitivity: "high"}
+      matched_nodes: [
+        %{
+          module: "MyApp.User",
+          field: "email",
+          key: "user_email",
+          class: "direct_identifier",
+          sensitive: true
+        }
       ],
       evidence: [
         %Evidence{
           type: :direct_field_access,
           expression: "user.email",
-          fields: [%{module: "MyApp.User", name: "email", sensitivity: "high"}]
+          fields: [
+            %{module: "MyApp.User", field: "email", class: "direct_identifier", sensitive: true}
+          ]
         }
       ]
     }

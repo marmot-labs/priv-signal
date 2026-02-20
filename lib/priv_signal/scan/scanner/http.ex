@@ -54,7 +54,7 @@ defmodule PrivSignal.Scan.Scanner.HTTP do
               |> Enum.flat_map(&Evidence.collect(&1, inventory))
               |> Evidence.dedupe()
 
-            matched_fields = Evidence.matched_fields(evidence)
+            matched_nodes = Evidence.matched_nodes(evidence)
             line = sink_line(node)
             {boundary, confidence} = boundary_for_call(node, scanner_cfg)
 
@@ -65,7 +65,8 @@ defmodule PrivSignal.Scan.Scanner.HTTP do
               file: path,
               line: line,
               sink: sink,
-              matched_fields: matched_fields,
+              matched_nodes: matched_nodes,
+              matched_fields: matched_nodes,
               evidence: evidence,
               role_kind: "http",
               boundary: boundary,

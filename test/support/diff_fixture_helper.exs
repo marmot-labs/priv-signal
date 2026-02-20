@@ -17,11 +17,13 @@ defmodule PrivSignal.Test.DiffFixtureHelper do
   end
 
   def build_artifact(flows, opts \\ []) when is_list(flows) and is_list(opts) do
-    schema_version = Keyword.get(opts, :schema_version, "1.2")
+    schema_version = Keyword.get(opts, :schema_version, "1")
+    data_nodes = Keyword.get(opts, :data_nodes, [])
 
     %{
       "schema_version" => schema_version,
       "summary" => %{},
+      "data_nodes" => data_nodes,
       "nodes" => [],
       "flows" =>
         flows
@@ -51,10 +53,11 @@ defmodule PrivSignal.Test.DiffFixtureHelper do
 
     artifact
     |> Map.put("flows", flows)
+    |> Map.put_new("data_nodes", [])
     |> Map.put_new("summary", %{})
     |> Map.put_new("nodes", [])
     |> Map.put_new("errors", [])
-    |> Map.put_new("schema_version", "1.2")
+    |> Map.put_new("schema_version", "1")
   end
 
   defp canonicalize_flow(flow) do
@@ -69,6 +72,8 @@ defmodule PrivSignal.Test.DiffFixtureHelper do
     |> Map.put("evidence", evidence)
     |> Map.put_new("sink", %{})
     |> Map.put_new("boundary", "internal")
+    |> Map.put_new("source_class", "direct_identifier")
+    |> Map.put_new("source_sensitive", false)
     |> Map.put_new("confidence", 0.0)
   end
 end

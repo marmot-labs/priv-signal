@@ -19,10 +19,11 @@ defmodule PrivSignal.Infer.OutputEnvelopeTest do
 
     json = JSON.render(result)
 
-    assert json.schema_version == "1.2"
+    assert json.schema_version == "1"
     assert is_map(json.tool)
     assert Map.has_key?(json.git, :commit)
     assert is_map(json.summary)
+    assert is_list(json.data_nodes)
     assert is_list(json.nodes)
     assert is_list(json.flows)
     assert is_list(json.errors)
@@ -47,7 +48,7 @@ defmodule PrivSignal.Infer.OutputEnvelopeTest do
 
     assert Map.has_key?(node, :id)
     assert Map.has_key?(node, :node_type)
-    assert Map.has_key?(node, :pii)
+    assert Map.has_key?(node, :data_refs)
     assert Map.has_key?(node, :code_context)
     assert Map.has_key?(node, :role)
     assert Map.has_key?(node, :confidence)

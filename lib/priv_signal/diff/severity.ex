@@ -2,7 +2,6 @@ defmodule PrivSignal.Diff.Severity do
   @moduledoc false
 
   @default_rule_id "R-LOW-DEFAULT"
-  @high_sensitivity_field_names MapSet.new(["ssn", "dob", "date_of_birth", "passport_number"])
 
   def annotate(changes) when is_list(changes) do
     changes
@@ -27,6 +26,10 @@ defmodule PrivSignal.Diff.Severity do
     {"low", "R-LOW-FLOW-REMOVED"}
   end
 
+  defp classify(%{type: "data_node_added", change: "new_inferred_attribute"}) do
+    {"medium", "R-MEDIUM-NEW-INFERRED-ATTRIBUTE"}
+  end
+
   defp classify(%{type: "confidence_changed"}) do
     {"low", "R-LOW-CONFIDENCE-ONLY"}
   end
@@ -35,7 +38,7 @@ defmodule PrivSignal.Diff.Severity do
     {"high", "R-HIGH-EXTERNAL-SINK-ADDED"}
   end
 
-  defp classify(%{type: "flow_changed", change: "external_sink_added_removed"}) do
+  defp classify(%{type: "flow_changed", change: "external_sink_changed"}) do
     {"high", "R-HIGH-EXTERNAL-SINK-CHANGED"}
   end
 
@@ -47,22 +50,16 @@ defmodule PrivSignal.Diff.Severity do
     end
   end
 
-  defp classify(%{type: "flow_changed", change: "pii_fields_expanded", details: details}) do
-    added_fields =
-      details_value(details, :added_fields)
-      |> List.wrap()
-      |> Enum.map(&normalize_field_name/1)
-      |> MapSet.new()
-
-    if MapSet.size(MapSet.intersection(added_fields, @high_sensitivity_field_names)) > 0 do
-      {"high", "R-HIGH-PII-EXPANDED-HIGH-SENSITIVITY"}
-    else
-      {"medium", "R-MEDIUM-PII-EXPANDED"}
-    end
+  defp classify(%{type: "flow_changed", change: "behavioral_signal_persisted"}) do
+    {"medium", "R-MEDIUM-BEHAVIORAL-SIGNAL-PERSISTED"}
   end
 
-  defp classify(%{type: "flow_changed", change: "pii_fields_reduced"}) do
-    {"low", "R-LOW-PII-REDUCED"}
+  defp classify(%{type: "flow_changed", change: "inferred_attribute_external_transfer"}) do
+    {"high", "R-HIGH-INFERRED-ATTRIBUTE-EXTERNAL-TRANSFER"}
+  end
+
+  defp classify(%{type: "flow_changed", change: "sensitive_context_linkage_added"}) do
+    {"high", "R-HIGH-SENSITIVE-CONTEXT-LINKAGE"}
   end
 
   defp classify(_change) do
@@ -85,12 +82,4 @@ defmodule PrivSignal.Diff.Severity do
   end
 
   defp details_value(_details, _key), do: nil
-
-  defp normalize_field_name(value) when is_binary(value) do
-    value
-    |> String.trim()
-    |> String.downcase()
-  end
-
-  defp normalize_field_name(value), do: to_string(value) |> normalize_field_name()
 end

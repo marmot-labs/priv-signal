@@ -9,7 +9,7 @@ defmodule PrivSignal.Diff.FixtureHelperTest do
 
     assert is_map(base)
     assert is_map(candidate)
-    assert Map.get(base, "schema_version") == "1.2"
+    assert Map.get(base, "schema_version") == "1"
   end
 
   test "build_artifact sorts flows and deduplicates evidence deterministically" do

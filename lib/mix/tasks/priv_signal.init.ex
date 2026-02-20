@@ -23,15 +23,42 @@ defmodule Mix.Tasks.PrivSignal.Init do
     """
     version: 1
 
-    pii:
-      - module: MyApp.Accounts.User
-        fields:
-          - name: email
-            category: contact
-            sensitivity: medium
-          - name: user_id
-            category: identifier
-            sensitivity: low
+    prd_nodes:
+      - key: user_email
+        label: User Email
+        class: direct_identifier
+        sensitive: true
+        scope:
+          module: MyApp.Accounts.User
+          field: email
+      - key: user_id
+        label: User ID
+        class: persistent_pseudonymous_identifier
+        sensitive: false
+        scope:
+          module: MyApp.Accounts.User
+          field: user_id
+      - key: session_seconds
+        label: Session Duration Seconds
+        class: behavioral_signal
+        sensitive: false
+        scope:
+          module: MyApp.Analytics.SessionEvent
+          field: duration_seconds
+      - key: engagement_score
+        label: Engagement Score
+        class: inferred_attribute
+        sensitive: false
+        scope:
+          module: MyApp.Analytics.UserProfile
+          field: engagement_score
+      - key: mental_health_category
+        label: Mental Health Category
+        class: sensitive_context_indicator
+        sensitive: true
+        scope:
+          module: MyApp.Health.Profile
+          field: mental_health_category
 
     scanners:
       logging:

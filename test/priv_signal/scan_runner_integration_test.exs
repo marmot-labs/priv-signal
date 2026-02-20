@@ -22,16 +22,16 @@ defmodule PrivSignal.ScanRunnerIntegrationTest do
     assert result.summary.confirmed_count >= 1
     assert result.summary.possible_count >= 1
     assert result.summary.errors == 0
-    assert result.inventory.field_count == 2
+    assert result.inventory.node_count == 2
 
     assert Enum.any?(result.findings, fn finding ->
              finding.module == "Fixtures.Scan.ConfirmedPIILogging" and
-               finding.classification == :confirmed_pii
+               finding.classification == :confirmed_prd
            end)
 
     assert Enum.any?(result.findings, fn finding ->
              finding.module == "Fixtures.Scan.PossiblePIILogging" and
-               finding.classification == :possible_pii
+               finding.classification == :possible_prd
            end)
   end
 

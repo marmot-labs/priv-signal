@@ -5,9 +5,11 @@ defmodule PrivSignal.Config do
 
   alias PrivSignal.Config.{
     Flow,
+    PathStep,
     PIIEntry,
     PIIField,
-    PathStep,
+    PRDNode,
+    PRDScope,
     Scoring,
     Scoring.LLMInterpretation,
     Scoring.Thresholds,
@@ -37,6 +39,21 @@ defmodule PrivSignal.Config do
     defstruct module: nil, function: nil
   end
 
+  defmodule PRDScope do
+    @moduledoc false
+    defstruct module: nil, field: nil
+  end
+
+  defmodule PRDNode do
+    @moduledoc false
+    defstruct key: nil,
+              label: nil,
+              class: nil,
+              sensitive: false,
+              scope: nil
+  end
+
+  # Compatibility-only structs for legacy tests/helpers.
   defmodule PIIEntry do
     @moduledoc false
     defstruct module: nil, fields: []
@@ -112,13 +129,16 @@ defmodule PrivSignal.Config do
     defstruct weights: nil, thresholds: nil, llm_interpretation: nil
   end
 
-  defstruct version: 1, pii: [], flows: [], scanners: nil, scoring: nil
+  defstruct version: 1, prd_nodes: [], pii: [], flows: [], scanners: nil, scoring: nil
 
   @doc false
   def from_map(map) when is_map(map) do
+    prd_nodes = Enum.map(get(map, :prd_nodes) || [], &prd_node_from_map/1)
+
     %__MODULE__{
       version: get(map, :version),
-      pii: Enum.map(get(map, :pii) || [], &pii_entry_from_map/1),
+      prd_nodes: prd_nodes,
+      pii: pii_from_prd_nodes(prd_nodes),
       flows: Enum.map(get(map, :flows) || [], &flow_from_map/1),
       scanners: scanners_from_map(get(map, :scanners)),
       scoring: scoring_from_map(get(map, :scoring))
@@ -155,19 +175,47 @@ defmodule PrivSignal.Config do
     }
   end
 
-  defp pii_entry_from_map(map) do
-    %PIIEntry{
-      module: get(map, :module),
-      fields: Enum.map(get(map, :fields) || [], &pii_field_from_map/1)
+  defp prd_node_from_map(map) do
+    %PRDNode{
+      key: get(map, :key),
+      label: get(map, :label),
+      class: get(map, :class),
+      sensitive: get(map, :sensitive) || false,
+      scope: prd_scope_from_map(get(map, :scope))
     }
   end
 
-  defp pii_field_from_map(map) do
-    %PIIField{
-      name: get(map, :name),
-      category: get(map, :category),
-      sensitivity: get(map, :sensitivity) || "medium"
+  defp prd_scope_from_map(map) when is_map(map) do
+    %PRDScope{
+      module: get(map, :module),
+      field: get(map, :field)
     }
+  end
+
+  defp prd_scope_from_map(_), do: nil
+
+  defp pii_from_prd_nodes(prd_nodes) do
+    prd_nodes
+    |> Enum.group_by(&if &1.scope, do: &1.scope.module, else: nil)
+    |> Enum.reject(fn {module_name, _nodes} ->
+      is_nil(module_name) or String.trim(module_name) == ""
+    end)
+    |> Enum.map(fn {module_name, nodes} ->
+      %PIIEntry{
+        module: module_name,
+        fields:
+          nodes
+          |> Enum.map(fn node ->
+            %PIIField{
+              name: if(node.scope, do: node.scope.field, else: nil),
+              category: node.class,
+              sensitivity: if(node.sensitive, do: "high", else: "medium")
+            }
+          end)
+          |> Enum.reject(&is_nil(&1.name))
+      }
+    end)
+    |> Enum.sort_by(& &1.module)
   end
 
   defp flow_from_map(map) do

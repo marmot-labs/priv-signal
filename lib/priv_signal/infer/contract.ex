@@ -3,10 +3,17 @@ defmodule PrivSignal.Infer.Contract do
 
   alias PrivSignal.Infer.NodeNormalizer
 
-  @schema_version "1.2"
-  @supported_schema_versions MapSet.new(["1.0", "1.1", "1.2"])
+  @schema_version "1"
+  @supported_schema_versions MapSet.new(["1"])
   @node_types MapSet.new(["entrypoint", "source", "sink", "transform"])
   @boundaries MapSet.new(["internal", "external"])
+  @data_classes MapSet.new([
+                  "direct_identifier",
+                  "persistent_pseudonymous_identifier",
+                  "behavioral_signal",
+                  "inferred_attribute",
+                  "sensitive_context_indicator"
+                ])
 
   def schema_version, do: @schema_version
   def supported_schema_versions, do: MapSet.to_list(@supported_schema_versions)
@@ -17,18 +24,15 @@ defmodule PrivSignal.Infer.Contract do
 
   def compatible_schema_version?(_), do: false
 
-  def required_artifact_keys(schema_version \\ @schema_version) do
-    base = [:schema_version, :tool, :git, :summary, :nodes, :errors]
-
-    if schema_version == "1.2" do
-      [:schema_version, :tool, :git, :summary, :nodes, :flows, :errors]
-    else
-      base
-    end
-  end
+  def required_artifact_keys(_schema_version \\ @schema_version),
+    do: [:schema_version, :tool, :git, :summary, :data_nodes, :flows, :errors]
 
   def required_node_keys do
-    [:id, :node_type, :pii, :code_context, :role, :evidence, :confidence]
+    [:id, :node_type, :data_refs, :code_context, :role, :evidence, :confidence]
+  end
+
+  def required_data_node_keys do
+    [:key, :name, :class, :sensitive, :scope]
   end
 
   def valid_node_type?(node_type) do
@@ -49,8 +53,10 @@ defmodule PrivSignal.Infer.Contract do
 
     required_artifact_keys_present?(artifact, required_keys) and
       compatible_schema_version?(schema_version) and
-      is_list(get(artifact, :nodes)) and
-      valid_artifact_flows?(artifact, schema_version) and
+      is_list(get(artifact, :data_nodes)) and
+      Enum.all?(get(artifact, :data_nodes), &valid_data_node?/1) and
+      is_list(Map.get(artifact, :nodes, Map.get(artifact, "nodes", []))) and
+      is_list(get(artifact, :flows)) and
       is_list(get(artifact, :errors))
   end
 
@@ -101,11 +107,21 @@ defmodule PrivSignal.Infer.Contract do
     Enum.all?(required_keys, &has_key?(artifact, &1))
   end
 
-  defp valid_artifact_flows?(artifact, "1.2"), do: is_list(get(artifact, :flows))
-  defp valid_artifact_flows?(_artifact, _schema_version), do: true
+  def valid_data_node?(data_node) when is_map(data_node) do
+    required_data_node_keys_present?(data_node) and
+      valid_data_class?(get(data_node, :class)) and
+      is_boolean(get(data_node, :sensitive)) and
+      valid_data_scope?(get(data_node, :scope))
+  end
+
+  def valid_data_node?(_), do: false
 
   defp required_flow_keys_present?(flow) do
     Enum.all?(required_flow_keys(), &has_key?(flow, &1))
+  end
+
+  defp required_data_node_keys_present?(data_node) do
+    Enum.all?(required_data_node_keys(), &has_key?(data_node, &1))
   end
 
   defp valid_boundary?(value) when is_atom(value),
@@ -125,6 +141,22 @@ defmodule PrivSignal.Infer.Contract do
   end
 
   defp valid_sink?(_), do: false
+
+  defp valid_data_class?(value) when is_binary(value),
+    do: MapSet.member?(@data_classes, String.trim(String.downcase(value)))
+
+  defp valid_data_class?(_), do: false
+
+  defp valid_data_scope?(scope) when is_map(scope) do
+    module = get(scope, :module)
+    field = get(scope, :field)
+    present_string?(module) and present_string?(field)
+  end
+
+  defp valid_data_scope?(_), do: false
+
+  defp present_string?(value) when is_binary(value), do: String.trim(value) != ""
+  defp present_string?(_), do: false
 
   defp get(map, key) do
     Map.get(map, key) || Map.get(map, Atom.to_string(key))

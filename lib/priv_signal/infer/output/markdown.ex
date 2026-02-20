@@ -19,7 +19,7 @@ defmodule PrivSignal.Infer.Output.Markdown do
 
     lines =
       if nodes == [] do
-        lines ++ ["", "No PII nodes were emitted."]
+        lines ++ ["", "No PRD evidence nodes were emitted."]
       else
         lines ++ ["", "**Nodes:**", "" | Enum.map(nodes, &format_node/1)]
       end

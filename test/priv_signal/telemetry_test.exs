@@ -83,12 +83,14 @@ defmodule PrivSignal.TelemetryTest do
     """
     version: 1
 
-    pii:
-      - module: MyApp.Accounts.User
-        fields:
-          - name: email
-            category: contact
-            sensitivity: medium
+    prd_nodes:
+      - key: user_email
+        label: User Email
+        class: direct_identifier
+        sensitive: true
+        scope:
+          module: MyApp.Accounts.User
+          field: email
 
     flows:
       - id: xapi_export

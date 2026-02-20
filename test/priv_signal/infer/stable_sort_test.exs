@@ -23,28 +23,21 @@ defmodule PrivSignal.Infer.StableSortTest do
   end
 
   test "contract validates compatible schema versions" do
-    assert Contract.compatible_schema_version?("1.0")
-    assert Contract.compatible_schema_version?("1.1")
-    assert Contract.compatible_schema_version?("1.2")
+    assert Contract.compatible_schema_version?("1")
     refute Contract.compatible_schema_version?("2.0")
 
     artifact = %{
-      schema_version: "1.0",
+      schema_version: "1",
       tool: %{name: "priv_signal", version: "0.1.0"},
       git: %{commit: "abc123"},
       summary: %{},
+      data_nodes: [],
       nodes: [],
+      flows: [],
       errors: []
     }
 
     assert Contract.valid_artifact?(artifact)
-
-    artifact_v12 =
-      artifact
-      |> Map.put(:schema_version, "1.2")
-      |> Map.put(:flows, [])
-
-    assert Contract.valid_artifact?(artifact_v12)
 
     invalid = Map.put(artifact, :schema_version, "2.0")
     refute Contract.valid_artifact?(invalid)
@@ -53,7 +46,7 @@ defmodule PrivSignal.Infer.StableSortTest do
   defp node(module, function, file_path, kind, reference) do
     %{
       node_type: "sink",
-      pii: [%{reference: reference, category: "contact", sensitivity: "medium"}],
+      data_refs: [%{reference: reference, class: "direct_identifier", sensitive: true}],
       code_context: %{module: module, function: function, file_path: file_path, lines: [12]},
       role: %{kind: kind, subtype: "sample"},
       confidence: 1.0,

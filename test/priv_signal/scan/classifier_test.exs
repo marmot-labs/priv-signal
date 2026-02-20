@@ -13,22 +13,36 @@ defmodule PrivSignal.Scan.ClassifierTest do
         file: "lib/my_app/log.ex",
         line: 12,
         sink: "Logger.info",
-        matched_fields: [
-          %{module: "MyApp.User", name: "email", category: "contact", sensitivity: "medium"},
-          %{module: "MyApp.User", name: "dob", category: "special", sensitivity: "high"}
+        matched_nodes: [
+          %{
+            module: "MyApp.User",
+            field: "email",
+            key: "user_email",
+            class: "direct_identifier",
+            sensitive: true
+          },
+          %{
+            module: "MyApp.User",
+            field: "dob",
+            key: "user_dob",
+            class: "sensitive_context_indicator",
+            sensitive: true
+          }
         ],
         evidence: [
           %Evidence{
             type: :direct_field_access,
             expression: "user.email",
-            fields: [%{module: "MyApp.User", name: "email", sensitivity: "medium"}]
+            fields: [
+              %{module: "MyApp.User", field: "email", class: "direct_identifier", sensitive: true}
+            ]
           }
         ]
       }
     ]
 
     [finding] = Classifier.classify(candidates)
-    assert finding.classification == :confirmed_pii
+    assert finding.classification == :confirmed_prd
     assert finding.confidence == :confirmed
     assert finding.sensitivity == :high
     assert byte_size(finding.id) == 16
@@ -43,13 +57,13 @@ defmodule PrivSignal.Scan.ClassifierTest do
         file: "lib/my_app/log.ex",
         line: 24,
         sink: "Logger.debug",
-        matched_fields: [],
+        matched_nodes: [],
         evidence: [%Evidence{type: :bulk_inspect, expression: "inspect(params)", fields: []}]
       }
     ]
 
     [finding] = Classifier.classify(candidates)
-    assert finding.classification == :possible_pii
+    assert finding.classification == :possible_prd
     assert finding.confidence == :possible
     assert finding.sensitivity == :unknown
   end

@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.2",
+  "schema_version": "1",
   "summary": {},
   "nodes": [],
   "flows": [
@@ -7,11 +7,28 @@
       "id": "flow_user_registration",
       "source": "Demo.User.email",
       "entrypoint": "DemoWeb.UserController.create/2",
-      "sink": {"kind": "mailgun", "subtype": "MailgunClient.send"},
+      "sink": {
+        "kind": "mailgun",
+        "subtype": "MailgunClient.send"
+      },
       "boundary": "external",
       "confidence": 0.9,
-      "evidence": ["node_a"]
+      "evidence": [
+        "node_a"
+      ]
     }
   ],
-  "errors": []
+  "errors": [],
+  "data_nodes": [
+    {
+      "key": "demo_user_email",
+      "name": "Demo.User.email",
+      "class": "direct_identifier",
+      "sensitive": false,
+      "scope": {
+        "module": "Demo.User",
+        "field": "email"
+      }
+    }
+  ]
 }

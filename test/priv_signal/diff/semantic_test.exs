@@ -38,11 +38,57 @@ defmodule PrivSignal.Diff.SemanticTest do
     assert Enum.any?(changes, &(&1.change == "boundary_changed"))
   end
 
-  test "detects pii field expansion through source changes" do
-    base = DiffFixtureHelper.load_fixture!("fields_changed", :base)
-    candidate = DiffFixtureHelper.load_fixture!("fields_changed", :candidate)
+  test "detects inferred attribute external transfer trigger" do
+    data_nodes = [
+      %{
+        "key" => "risk_score",
+        "name" => "Risk Score",
+        "class" => "inferred_attribute",
+        "sensitive" => false,
+        "scope" => %{"module" => "Demo.Analytics", "field" => "risk_score"}
+      }
+    ]
 
-    assert Enum.any?(Semantic.compare(base, candidate), &(&1.change == "pii_fields_expanded"))
+    base =
+      DiffFixtureHelper.build_artifact(
+        [
+          %{
+            "id" => "flow_risk_score",
+            "source" => "Demo.Analytics.risk_score",
+            "source_key" => "risk_score",
+            "source_class" => "inferred_attribute",
+            "source_sensitive" => false,
+            "entrypoint" => "Demo.Analytics.track/1",
+            "sink" => %{"kind" => "logger", "subtype" => "Logger.info"},
+            "boundary" => "internal",
+            "confidence" => 0.7,
+            "evidence" => ["node_risk"]
+          }
+        ],
+        data_nodes: data_nodes
+      )
+
+    candidate =
+      DiffFixtureHelper.build_artifact(
+        [
+          %{
+            "id" => "flow_risk_score",
+            "source" => "Demo.Analytics.risk_score",
+            "source_key" => "risk_score",
+            "source_class" => "inferred_attribute",
+            "source_sensitive" => false,
+            "entrypoint" => "Demo.Analytics.track/1",
+            "sink" => %{"kind" => "http", "subtype" => "RiskAPI.send"},
+            "boundary" => "external",
+            "confidence" => 0.8,
+            "evidence" => ["node_risk"]
+          }
+        ],
+        data_nodes: data_nodes
+      )
+
+    changes = Semantic.compare(base, candidate)
+    assert Enum.any?(changes, &(&1.change == "inferred_attribute_external_transfer"))
   end
 
   test "confidence changes are optional" do

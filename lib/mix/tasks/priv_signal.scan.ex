@@ -73,8 +73,11 @@ defmodule Mix.Tasks.PrivSignal.Scan do
 
   defp emit_summary(result, json_path) do
     summary = Map.get(result, :summary, %{})
+    class_counts = Map.get(summary, :data_class_counts, %{})
 
     Mix.shell().info("scan nodes: total=#{Map.get(summary, :node_count, 0)}")
+    Mix.shell().info("scan data_nodes: total=#{Map.get(summary, :data_node_count, 0)}")
+    Mix.shell().info("scan classes: #{format_class_counts(class_counts)}")
     Mix.shell().info("scan flows: total=#{Map.get(summary, :flow_count, 0)}")
     Mix.shell().info("scan errors: #{Map.get(summary, :scan_error_count, 0)}")
     Mix.shell().info("scan lockfile written: #{json_path}")
@@ -90,6 +93,14 @@ defmodule Mix.Tasks.PrivSignal.Scan do
 
   defp format_error(error) when is_binary(error), do: error
   defp format_error(error), do: inspect(error)
+
+  defp format_class_counts(class_counts) when map_size(class_counts) == 0, do: "none"
+
+  defp format_class_counts(class_counts) do
+    class_counts
+    |> Enum.sort_by(fn {class, _count} -> to_string(class) end)
+    |> Enum.map_join(", ", fn {class, count} -> "#{class}=#{count}" end)
+  end
 
   defp load_config do
     case PrivSignal.Config.Loader.load() do

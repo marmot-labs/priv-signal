@@ -2,6 +2,7 @@ version: 1
 
 pii_modules:
   - Fixtures.Scan.User
+prd_nodes: []
 
 flows:
   - id: legacy_flow

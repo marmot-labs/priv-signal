@@ -45,41 +45,66 @@ defmodule PrivSignal.Infer.FlowBuilder do
 
   defp flows_for_group({_module_name, _function_name, _file_path} = key, nodes, opts) do
     sinks = Enum.filter(nodes, &(Map.get(&1, :node_type) == "sink"))
-    references = source_references(nodes)
+    references = source_refs(nodes)
 
     if sinks == [] or references == [] do
       []
     else
       entrypoint = entrypoint_for_group(key, nodes)
+      linked_refs = references |> Enum.map(& &1.reference) |> Enum.uniq() |> Enum.sort()
+
+      linked_classes =
+        references |> Enum.map(& &1.class) |> Enum.reject(&is_nil/1) |> Enum.uniq() |> Enum.sort()
 
       sinks
       |> Enum.flat_map(fn sink ->
         Enum.map(references, fn reference ->
-          flow_from_sink_reference(sink, reference, entrypoint, nodes, opts)
+          flow_from_sink_reference(
+            sink,
+            reference,
+            entrypoint,
+            nodes,
+            linked_refs,
+            linked_classes,
+            opts
+          )
         end)
       end)
     end
   end
 
-  defp flow_from_sink_reference(sink, reference, entrypoint, group_nodes, opts) do
+  defp flow_from_sink_reference(
+         sink,
+         reference,
+         entrypoint,
+         group_nodes,
+         linked_refs,
+         linked_classes,
+         opts
+       ) do
     sink_kind = sink |> role_value(:kind) |> normalize_kind()
     sink_subtype = sink |> role_value(:callee) |> normalize_subtype()
-    evidence = evidence_for_reference(group_nodes, sink, reference)
+    evidence = evidence_for_reference(group_nodes, sink, reference.reference)
     boundary = boundary_for_kind(sink_kind)
 
     confidence =
       FlowScorer.score(
         %{
           same_function_context: true,
-          direct_reference: direct_reference?(sink, reference),
+          direct_reference: direct_reference?(sink, reference.reference),
           possible_pii: possible_pii?(sink),
-          indirect_only: not direct_reference?(sink, reference)
+          indirect_only: not direct_reference?(sink, reference.reference)
         },
         opts
       )
 
     flow = %Flow{
-      source: reference,
+      source: reference.reference,
+      source_key: reference.key,
+      source_class: reference.class,
+      source_sensitive: reference.sensitive,
+      linked_refs: linked_refs,
+      linked_classes: linked_classes,
       entrypoint: entrypoint,
       sink: %{kind: sink_kind, subtype: sink_subtype},
       boundary: boundary,
@@ -105,7 +130,9 @@ defmodule PrivSignal.Infer.FlowBuilder do
     flows
     |> Enum.group_by(fn flow ->
       sink = Map.get(flow, :sink, %{})
-      {flow.source, flow.entrypoint, Map.get(sink, :kind), Map.get(sink, :subtype), flow.boundary}
+
+      {flow.source, flow.source_class, flow.entrypoint, Map.get(sink, :kind),
+       Map.get(sink, :subtype), flow.boundary}
     end)
     |> Enum.map(fn {_key, candidates} ->
       candidates
@@ -120,25 +147,25 @@ defmodule PrivSignal.Infer.FlowBuilder do
     end)
   end
 
-  defp source_references(nodes) do
+  defp source_refs(nodes) do
     nodes
     |> Enum.flat_map(fn node ->
       node
-      |> Map.get(:pii, Map.get(node, "pii", []))
-      |> Enum.map(fn pii -> Map.get(pii, :reference) || Map.get(pii, "reference") end)
+      |> Map.get(:data_refs, Map.get(node, :pii, Map.get(node, "pii", [])))
+      |> Enum.map(&normalize_data_ref/1)
     end)
-    |> Enum.reject(&is_nil/1)
-    |> Enum.map(&String.trim(to_string(&1)))
-    |> Enum.reject(&(&1 == ""))
+    |> Enum.reject(&is_nil(&1.reference))
     |> Enum.uniq()
-    |> Enum.sort()
+    |> Enum.sort_by(fn ref ->
+      {ref.reference, ref.class || "", to_string(ref.sensitive), ref.key || ""}
+    end)
   end
 
   defp direct_reference?(sink, reference) do
     sink
-    |> Map.get(:pii, [])
-    |> Enum.any?(fn pii ->
-      (Map.get(pii, :reference) || Map.get(pii, "reference")) == reference
+    |> Map.get(:data_refs, Map.get(sink, :pii, []))
+    |> Enum.any?(fn data_ref ->
+      (Map.get(data_ref, :reference) || Map.get(data_ref, "reference")) == reference
     end)
   end
 
@@ -149,11 +176,29 @@ defmodule PrivSignal.Infer.FlowBuilder do
 
   defp node_has_reference?(node, reference) do
     node
-    |> Map.get(:pii, [])
-    |> Enum.any?(fn pii ->
-      (Map.get(pii, :reference) || Map.get(pii, "reference")) == reference
+    |> Map.get(:data_refs, Map.get(node, :pii, []))
+    |> Enum.any?(fn data_ref ->
+      (Map.get(data_ref, :reference) || Map.get(data_ref, "reference")) == reference
     end)
   end
+
+  defp normalize_data_ref(data_ref) when is_map(data_ref) do
+    reference =
+      data_ref
+      |> Map.get(:reference, Map.get(data_ref, "reference"))
+      |> normalize_string()
+
+    sensitive = Map.get(data_ref, :sensitive, Map.get(data_ref, "sensitive"))
+
+    %{
+      reference: reference,
+      key: data_ref |> Map.get(:key, Map.get(data_ref, "key")) |> normalize_string(),
+      class: data_ref |> Map.get(:class, Map.get(data_ref, "class")) |> normalize_string(),
+      sensitive: sensitive in [true, "true"]
+    }
+  end
+
+  defp normalize_data_ref(_), do: %{reference: nil, key: nil, class: nil, sensitive: false}
 
   defp group_key(node) do
     context = Map.get(node, :code_context, %{})
@@ -222,4 +267,16 @@ defmodule PrivSignal.Infer.FlowBuilder do
   defp blank?(value) when is_binary(value), do: String.trim(value) == ""
   defp blank?(nil), do: true
   defp blank?(_), do: false
+
+  defp normalize_string(nil), do: nil
+
+  defp normalize_string(value) do
+    value
+    |> to_string()
+    |> String.trim()
+    |> case do
+      "" -> nil
+      normalized -> normalized
+    end
+  end
 end

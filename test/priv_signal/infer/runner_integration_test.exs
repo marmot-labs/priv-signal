@@ -23,7 +23,7 @@ defmodule PrivSignal.Infer.RunnerIntegrationTest do
                max_concurrency: 2
              )
 
-    assert first.schema_version == "1.2"
+    assert first.schema_version == "1"
     assert first.summary.files_scanned == 3
     assert first.summary.node_count >= 2
     assert first.summary.flow_count >= 2

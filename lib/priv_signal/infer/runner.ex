@@ -41,6 +41,7 @@ defmodule PrivSignal.Infer.Runner do
 
   defp build_infer_result(scan_result, opts, proto_flows_enabled?) do
     findings = Map.get(scan_result, :findings, [])
+    data_nodes = build_data_nodes(scan_result)
 
     nodes =
       findings
@@ -83,23 +84,34 @@ defmodule PrivSignal.Infer.Runner do
       git: %{
         commit: git_commit()
       },
-      summary: build_summary(scan_result, nodes, flows, candidate_count, proto_flows_enabled?),
+      summary:
+        build_summary(
+          scan_result,
+          data_nodes,
+          nodes,
+          flows,
+          candidate_count,
+          proto_flows_enabled?
+        ),
+      data_nodes: data_nodes,
       nodes: nodes,
       flows: flows,
       errors: Map.get(scan_result, :errors, [])
     }
   end
 
-  defp build_summary(scan_result, nodes, flows, candidate_count, proto_flows_enabled?) do
+  defp build_summary(scan_result, data_nodes, nodes, flows, candidate_count, proto_flows_enabled?) do
     summary = Map.get(scan_result, :summary, %{})
     flows_hash = flows_hash(flows)
 
     %{
+      data_node_count: length(data_nodes),
       node_count: length(nodes),
       flow_count: length(flows),
       flow_candidate_count: candidate_count,
       flows_hash: flows_hash,
       proto_flows_enabled: proto_flows_enabled?,
+      data_class_counts: count_by(data_nodes, &Map.get(&1, :class)),
       node_type_counts: count_by(nodes, &Map.get(&1, :node_type)),
       boundary_counts: count_by(flows, &Map.get(&1, :boundary)),
       files_scanned: Map.get(summary, :files_scanned, 0),
@@ -107,6 +119,25 @@ defmodule PrivSignal.Infer.Runner do
       confirmed_count: Map.get(summary, :confirmed_count, 0),
       possible_count: Map.get(summary, :possible_count, 0)
     }
+  end
+
+  defp build_data_nodes(scan_result) do
+    scan_result
+    |> Map.get(:inventory, %{})
+    |> Map.get(:data_nodes, [])
+    |> Enum.map(fn node ->
+      %{
+        key: Map.get(node, :key),
+        name: Map.get(node, :label),
+        class: Map.get(node, :class),
+        sensitive: Map.get(node, :sensitive) == true,
+        scope: %{
+          module: Map.get(node, :module),
+          field: Map.get(node, :field)
+        }
+      }
+    end)
+    |> Enum.sort_by(&{&1.key, &1.class, &1.name})
   end
 
   defp count_by(list, fun) do
@@ -228,6 +259,11 @@ defmodule PrivSignal.Infer.Runner do
       %{
         id: Map.get(flow, :id),
         source: Map.get(flow, :source),
+        source_key: Map.get(flow, :source_key),
+        source_class: Map.get(flow, :source_class),
+        source_sensitive: Map.get(flow, :source_sensitive),
+        linked_refs: Map.get(flow, :linked_refs, []),
+        linked_classes: Map.get(flow, :linked_classes, []),
         entrypoint: Map.get(flow, :entrypoint),
         sink_kind: Map.get(sink, :kind),
         sink_subtype: Map.get(sink, :subtype),

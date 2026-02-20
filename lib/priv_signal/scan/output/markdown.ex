@@ -7,7 +7,7 @@ defmodule PrivSignal.Scan.Output.Markdown do
     errors = result.errors || []
 
     lines = [
-      "## PrivSignal PII Scan",
+      "## PrivSignal PRD Scan",
       "",
       "**Scanner version:** #{result.scanner_version}",
       "**Files scanned:** #{summary.files_scanned || 0}",
@@ -19,7 +19,7 @@ defmodule PrivSignal.Scan.Output.Markdown do
 
     lines =
       if findings == [] do
-        lines ++ ["", "No PII-relevant logging findings detected."]
+        lines ++ ["", "No PRD-relevant scanner findings detected."]
       else
         lines ++ ["", "**Findings:**", "" | Enum.map(findings, &format_finding/1)]
       end
@@ -38,7 +38,12 @@ defmodule PrivSignal.Scan.Output.Markdown do
     location =
       "#{finding.module}.#{finding.function}/#{finding.arity} (#{normalize_file_path(finding.file)}:#{finding.line})"
 
-    fields = Enum.map_join(finding.matched_fields || [], ", ", & &1.name)
+    nodes = finding.matched_nodes || finding.matched_fields || []
+
+    fields =
+      Enum.map_join(nodes, ", ", fn node ->
+        node[:field] || node[:name] || node[:key] || "unknown"
+      end)
 
     "- [#{format_severity(finding)}] #{location} via #{finding.sink} (fields: #{fields})"
   end
@@ -49,8 +54,8 @@ defmodule PrivSignal.Scan.Output.Markdown do
     "- #{file}: #{reason}"
   end
 
-  defp format_severity(%{classification: :confirmed_pii, sensitivity: :high}), do: "HIGH"
-  defp format_severity(%{classification: :confirmed_pii}), do: "MEDIUM"
+  defp format_severity(%{classification: :confirmed_prd, sensitivity: :high}), do: "HIGH"
+  defp format_severity(%{classification: :confirmed_prd}), do: "MEDIUM"
   defp format_severity(_), do: "LOW"
 
   defp normalize_file_path(nil), do: nil

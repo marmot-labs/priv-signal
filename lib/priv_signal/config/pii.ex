@@ -2,28 +2,26 @@ defmodule PrivSignal.Config.PII do
   @moduledoc false
 
   alias PrivSignal.Config
-  alias PrivSignal.Config.PIIEntry
+  alias PrivSignal.Config.PRD
 
   def modules(%Config{} = config) do
-    config
-    |> entries()
-    |> Enum.map(&normalize_module/1)
-    |> Enum.uniq()
+    PRD.modules(config)
   end
 
   def fields(%Config{} = config) do
     config
     |> entries()
-    |> Enum.flat_map(fn entry ->
-      Enum.map(entry.fields || [], fn field ->
-        %{
-          module: normalize_module(entry.module),
-          name: field.name,
-          category: field.category,
-          sensitivity: field.sensitivity || "medium"
-        }
-      end)
+    |> Enum.map(fn node ->
+      %{
+        module: normalize_module(node.scope && node.scope.module),
+        name: normalize_token(node.scope && node.scope.field),
+        key: node.key,
+        label: node.label,
+        class: node.class,
+        sensitivity: if(node.sensitive, do: "high", else: "medium")
+      }
     end)
+    |> Enum.reject(&is_nil(&1.name))
   end
 
   def key_tokens(%Config{} = config) do
@@ -35,10 +33,9 @@ defmodule PrivSignal.Config.PII do
   end
 
   def entries(%Config{} = config) do
-    config.pii || []
+    config.prd_nodes || []
   end
 
-  defp normalize_module(%PIIEntry{module: module}), do: normalize_module(module)
   defp normalize_module("Elixir." <> rest), do: rest
   defp normalize_module(module), do: module
 

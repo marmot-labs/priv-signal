@@ -18,6 +18,11 @@ defmodule PrivSignal.Infer.FlowIdentity do
 
     [
       normalize(Map.get(flow, :source)),
+      normalize(Map.get(flow, :source_key)),
+      normalize(Map.get(flow, :source_class)),
+      normalize(Map.get(flow, :source_sensitive)),
+      normalize(Enum.join(Map.get(flow, :linked_refs, []), ",")),
+      normalize(Enum.join(Map.get(flow, :linked_classes, []), ",")),
       normalize(Map.get(flow, :entrypoint)),
       normalize(Map.get(sink, :kind)),
       normalize(Map.get(sink, :subtype)),

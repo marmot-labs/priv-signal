@@ -3,7 +3,7 @@ defmodule PrivSignal.Scan.Classifier do
 
   alias PrivSignal.Scan.Finding
 
-  @confirmed_evidence_types [:direct_field_access, :key_match, :pii_container]
+  @confirmed_evidence_types [:direct_field_access, :key_match, :prd_container, :pii_container]
 
   def classify(candidates) when is_list(candidates) do
     candidates
@@ -16,14 +16,15 @@ defmodule PrivSignal.Scan.Classifier do
     evidence_types = Enum.map(candidate.evidence || [], & &1.type)
     classification = classification(evidence_types)
     confidence = confidence(classification)
-    matched_fields = candidate.matched_fields || []
+    matched_nodes = candidate.matched_nodes || candidate.matched_fields || []
 
     %Finding{
-      id: fingerprint(candidate, evidence_types, matched_fields),
+      id: fingerprint(candidate, evidence_types, matched_nodes),
       classification: classification,
       confidence: confidence,
       confidence_hint: Map.get(candidate, :confidence_hint),
-      sensitivity: sensitivity(matched_fields),
+      sensitivity: sensitivity(matched_nodes),
+      data_classes: data_classes(matched_nodes),
       module: candidate.module,
       function: candidate.function,
       arity: candidate.arity,
@@ -34,7 +35,8 @@ defmodule PrivSignal.Scan.Classifier do
       role_subtype: Map.get(candidate, :role_subtype),
       boundary: Map.get(candidate, :boundary),
       sink: candidate.sink,
-      matched_fields: matched_fields,
+      matched_nodes: matched_nodes,
+      matched_fields: matched_nodes,
       evidence: candidate.evidence || []
     }
   end
@@ -45,23 +47,48 @@ defmodule PrivSignal.Scan.Classifier do
 
   defp classification(evidence_types) do
     if Enum.any?(evidence_types, &(&1 in @confirmed_evidence_types)) do
-      :confirmed_pii
+      :confirmed_prd
     else
-      :possible_pii
+      :possible_prd
     end
   end
 
-  defp confidence(:confirmed_pii), do: :confirmed
-  defp confidence(:possible_pii), do: :possible
+  defp confidence(:confirmed_prd), do: :confirmed
+  defp confidence(:possible_prd), do: :possible
 
   defp sensitivity([]), do: :unknown
 
-  defp sensitivity(fields) do
-    fields
-    |> Enum.map(&Map.get(&1, :sensitivity, "medium"))
-    |> Enum.map(&normalize_sensitivity/1)
+  defp sensitivity(nodes) do
+    nodes
+    |> Enum.map(&node_sensitivity/1)
     |> Enum.max_by(&sensitivity_rank/1, fn -> "unknown" end)
     |> String.to_atom()
+  end
+
+  defp data_classes(nodes) do
+    nodes
+    |> Enum.map(&(Map.get(&1, :class) || Map.get(&1, :category)))
+    |> Enum.reject(&is_nil/1)
+    |> Enum.map(&to_string/1)
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.uniq()
+    |> Enum.sort()
+  end
+
+  defp node_sensitivity(node) do
+    cond do
+      Map.get(node, :sensitive) == true ->
+        "high"
+
+      Map.get(node, :sensitive) == false ->
+        "medium"
+
+      true ->
+        node
+        |> Map.get(:sensitivity, "medium")
+        |> normalize_sensitivity()
+    end
   end
 
   defp normalize_sensitivity(value) when value in ["low", "medium", "high"], do: value
@@ -105,9 +132,11 @@ defmodule PrivSignal.Scan.Classifier do
 
   defp field_key(field) do
     module = Map.get(field, :module) || ""
-    name = Map.get(field, :name) || ""
-    category = Map.get(field, :category) || ""
+    key = Map.get(field, :key) || ""
+    name = Map.get(field, :field) || Map.get(field, :name) || ""
+    class = Map.get(field, :class) || Map.get(field, :category) || ""
     sensitivity = Map.get(field, :sensitivity) || ""
-    Enum.join([module, name, category, sensitivity], "|")
+    sensitive = Map.get(field, :sensitive)
+    Enum.join([module, key, name, class, sensitivity, inspect(sensitive)], "|")
   end
 end

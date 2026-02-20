@@ -25,11 +25,15 @@ defmodule PrivSignal.Scan.Scanner.Evidence do
     |> dedupe()
   end
 
-  def matched_fields(evidence) do
+  def matched_nodes(evidence) do
     evidence
     |> Enum.flat_map(& &1.fields)
     |> Enum.uniq()
-    |> Enum.sort_by(&{&1.module, &1.name, &1.category, &1.sensitivity})
+    |> Enum.sort_by(&{&1.module, &1.field || &1.name, &1.class || &1.category, &1.key})
+  end
+
+  def matched_fields(evidence) do
+    matched_nodes(evidence)
   end
 
   def dedupe(evidence) do
@@ -69,8 +73,8 @@ defmodule PrivSignal.Scan.Scanner.Evidence do
         []
 
       module ->
-        if Inventory.pii_module?(inventory, module) do
-          Map.get(inventory.fields_by_module, module, [])
+        if Inventory.prd_module?(inventory, module) do
+          Map.get(inventory.nodes_by_module, module, [])
         else
           []
         end
@@ -85,7 +89,7 @@ defmodule PrivSignal.Scan.Scanner.Evidence do
 
   defp evidence_type({{:., _, [_receiver, _field]}, _, []}), do: :direct_field_access
   defp evidence_type({:%{}, _, _}), do: :key_match
-  defp evidence_type({:%, _, _}), do: :pii_container
+  defp evidence_type({:%, _, _}), do: :prd_container
   defp evidence_type(value) when is_atom(value) or is_binary(value), do: :token_match
   defp evidence_type(_), do: :unknown
 
@@ -117,9 +121,9 @@ defmodule PrivSignal.Scan.Scanner.Evidence do
     "keyword_keys:" <> Enum.join(keys, ",")
   end
 
-  defp evidence_expression({:%, _, [module_ast, _map_ast]}, :pii_container) do
+  defp evidence_expression({:%, _, [module_ast, _map_ast]}, :prd_container) do
     module = Utils.module_name(module_ast) || "unknown"
-    "pii_container:" <> module
+    "prd_container:" <> module
   end
 
   defp evidence_expression(value, :token_match) when is_atom(value),
