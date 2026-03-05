@@ -36,4 +36,28 @@ defmodule PrivSignal.Diff.SemanticV2Test do
 
     assert SemanticV2.from_changes(changes) == SemanticV2.from_changes(Enum.reverse(changes))
   end
+
+  test "emits transform_delta.removed for sensitive context linkage removal" do
+    changes = [
+      %{
+        type: "flow_changed",
+        flow_id: "psfs_flow_1",
+        change: "sensitive_context_linkage_removed",
+        severity: "low",
+        rule_id: "R-LOW-DEFAULT",
+        details: %{
+          source: "Demo.User.user_id",
+          source_class: "persistent_pseudonymous_identifier",
+          boundary: "external",
+          removed_links: ["Demo.User.accommodation_status"]
+        }
+      }
+    ]
+
+    [event] = SemanticV2.from_changes(changes)
+
+    assert event.event_type == "transform_changed"
+    assert event.boundary_after == "external"
+    assert event.transform_delta["removed"] == ["Demo.User.accommodation_status"]
+  end
 end

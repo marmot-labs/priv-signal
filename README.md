@@ -66,6 +66,10 @@ scanners:
     additional_modules: []
 ```
 
+Classification reference:
+
+- [`docs/classification_registry.md`](docs/classification_registry.md): stable registry IDs for scan detections, semantic diff classes, and score rubric rules.
+
 ## Validation
 
 Run deterministic flow validation against your codebase:

@@ -2,6 +2,8 @@ defmodule PrivSignal.Infer.Flow do
   @moduledoc false
 
   defstruct id: nil,
+            stable_id: nil,
+            variant_id: nil,
             source: nil,
             source_key: nil,
             source_class: nil,

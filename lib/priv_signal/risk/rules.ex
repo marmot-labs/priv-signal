@@ -17,7 +17,7 @@ defmodule PrivSignal.Risk.Rules do
   end
 
   defp high_risk?(events, config) do
-      new_external_transfer?(events) or
+    new_external_transfer?(events) or
       sensitive_data?(events, config)
   end
 

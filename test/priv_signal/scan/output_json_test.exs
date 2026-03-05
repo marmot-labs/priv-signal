@@ -24,7 +24,9 @@ defmodule PrivSignal.Scan.Output.JSONTest do
         %Evidence{
           type: :direct_field_access,
           expression: "user.email",
-          fields: [%{module: "MyApp.User", name: "email", class: "direct_identifier", sensitive: true}]
+          fields: [
+            %{module: "MyApp.User", name: "email", class: "direct_identifier", sensitive: true}
+          ]
         }
       ]
     }

@@ -1,21 +1,32 @@
 defmodule PrivSignal.Infer.FlowIdentity do
   @moduledoc false
 
-  @id_prefix "psf_"
+  @stable_prefix "psfs_"
+  @variant_prefix "psf_"
 
+  # Stable identity for the logical flow across sink/boundary variants.
   def id(flow) when is_map(flow) do
     flow
-    |> identity_tuple()
+    |> stable_identity_tuple()
     |> Enum.join("|")
     |> then(&:crypto.hash(:sha256, &1))
     |> Base.encode16(case: :lower)
     |> binary_part(0, 12)
-    |> then(&(@id_prefix <> &1))
+    |> then(&(@stable_prefix <> &1))
   end
 
-  def identity_tuple(flow) when is_map(flow) do
-    sink = Map.get(flow, :sink, %{})
+  # Variant identity captures the full sink/boundary variant.
+  def variant_id(flow) when is_map(flow) do
+    flow
+    |> variant_identity_tuple()
+    |> Enum.join("|")
+    |> then(&:crypto.hash(:sha256, &1))
+    |> Base.encode16(case: :lower)
+    |> binary_part(0, 12)
+    |> then(&(@variant_prefix <> &1))
+  end
 
+  def stable_identity_tuple(flow) when is_map(flow) do
     [
       normalize(Map.get(flow, :source)),
       normalize(Map.get(flow, :source_key)),
@@ -23,11 +34,19 @@ defmodule PrivSignal.Infer.FlowIdentity do
       normalize(Map.get(flow, :source_sensitive)),
       normalize(Enum.join(Map.get(flow, :linked_refs, []), ",")),
       normalize(Enum.join(Map.get(flow, :linked_classes, []), ",")),
-      normalize(Map.get(flow, :entrypoint)),
-      normalize(Map.get(sink, :kind)),
-      normalize(Map.get(sink, :subtype)),
-      normalize(Map.get(flow, :boundary))
+      normalize(Map.get(flow, :entrypoint))
     ]
+  end
+
+  def variant_identity_tuple(flow) when is_map(flow) do
+    sink = Map.get(flow, :sink, %{})
+
+    stable_identity_tuple(flow) ++
+      [
+        normalize(Map.get(sink, :kind)),
+        normalize(Map.get(sink, :subtype)),
+        normalize(Map.get(flow, :boundary))
+      ]
   end
 
   defp normalize(nil), do: ""

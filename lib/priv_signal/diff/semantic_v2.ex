@@ -41,7 +41,7 @@ defmodule PrivSignal.Diff.SemanticV2 do
       sensitivity_after: sensitivity_after(change, details),
       destination: destination(change, details),
       pii_delta: pii_delta(change, details),
-      transform_delta: %{"added" => [], "removed" => []},
+      transform_delta: transform_delta(change, details),
       details: details
     }
 
@@ -64,6 +64,9 @@ defmodule PrivSignal.Diff.SemanticV2 do
     do: "destination_changed"
 
   defp map_event_type(%{type: "flow_changed", change: "sensitive_context_linkage_added"}),
+    do: "transform_changed"
+
+  defp map_event_type(%{type: "flow_changed", change: "sensitive_context_linkage_removed"}),
     do: "transform_changed"
 
   defp map_event_type(%{type: "flow_changed", change: "behavioral_signal_persisted"}),
@@ -98,6 +101,14 @@ defmodule PrivSignal.Diff.SemanticV2 do
   defp boundary_after(%{type: "flow_changed", change: "boundary_changed"}, details),
     do: fetch(details, :after_boundary, "internal")
 
+  defp boundary_after(
+         %{type: "flow_changed", change: change},
+         details
+       )
+       when change in ["sensitive_context_linkage_added", "sensitive_context_linkage_removed"] do
+    fetch(details, :boundary, "internal")
+  end
+
   defp boundary_after(_change, _details), do: "internal"
 
   defp sensitivity_before(%{change: "pii_fields_reduced"}, _details), do: "medium"
@@ -122,6 +133,7 @@ defmodule PrivSignal.Diff.SemanticV2 do
   defp sensitivity_after(%{change: "pii_fields_reduced"}, _details), do: "low"
   defp sensitivity_after(%{change: "behavioral_signal_persisted"}, _details), do: "medium"
   defp sensitivity_after(%{change: "sensitive_context_linkage_added"}, _details), do: "high"
+  defp sensitivity_after(%{change: "sensitive_context_linkage_removed"}, _details), do: "low"
   defp sensitivity_after(%{severity: "high"}, _details), do: "high"
   defp sensitivity_after(%{severity: "medium"}, _details), do: "medium"
   defp sensitivity_after(_change, _details), do: "low"
@@ -193,7 +205,31 @@ defmodule PrivSignal.Diff.SemanticV2 do
     }
   end
 
+  defp pii_delta(%{change: "sensitive_context_linkage_removed"}, details) do
+    %{
+      "added_categories" => [],
+      "added_fields" => [],
+      "removed_fields" => fetch(details, :removed_links, [])
+    }
+  end
+
   defp pii_delta(_, _), do: %{"added_categories" => [], "added_fields" => []}
+
+  defp transform_delta(%{change: "sensitive_context_linkage_added"}, details) do
+    %{
+      "added" => fetch(details, :added_links, []),
+      "removed" => []
+    }
+  end
+
+  defp transform_delta(%{change: "sensitive_context_linkage_removed"}, details) do
+    %{
+      "added" => [],
+      "removed" => fetch(details, :removed_links, [])
+    }
+  end
+
+  defp transform_delta(_, _), do: %{"added" => [], "removed" => []}
 
   defp class_rank("high"), do: 0
   defp class_rank("medium"), do: 1

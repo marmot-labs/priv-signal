@@ -56,6 +56,8 @@ defmodule PrivSignal.Infer.Output.JSON do
   defp render_flow(flow) when is_map(flow) do
     %{
       id: Map.get(flow, :id),
+      stable_id: Map.get(flow, :stable_id),
+      variant_id: Map.get(flow, :variant_id),
       source: Map.get(flow, :source),
       source_key: Map.get(flow, :source_key),
       source_class: Map.get(flow, :source_class),

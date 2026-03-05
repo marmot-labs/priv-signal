@@ -112,7 +112,9 @@ defmodule PrivSignal.Infer.FlowBuilder do
       evidence: evidence
     }
 
-    %{flow | id: FlowIdentity.id(flow)}
+    stable_id = FlowIdentity.id(flow)
+    variant_id = FlowIdentity.variant_id(flow)
+    %{flow | id: variant_id, stable_id: stable_id, variant_id: variant_id}
   end
 
   defp evidence_for_reference(group_nodes, sink, reference) do

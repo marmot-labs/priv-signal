@@ -108,6 +108,15 @@ defmodule PrivSignal.Diff.Render.Human do
     "- Sensitive context linkage added: #{change.flow_id} (linked_classes: #{linked}) [#{change.rule_id}]"
   end
 
+  defp render_change(
+         %{type: "flow_changed", change: "sensitive_context_linkage_removed"} = change
+       ) do
+    details = Map.get(change, :details, %{})
+    removed = Map.get(details, :removed_links, []) |> Enum.join(", ")
+
+    "- Sensitive context linkage removed: #{change.flow_id} (removed_links: #{removed}) [#{change.rule_id}]"
+  end
+
   defp render_change(change) do
     "- #{Map.get(change, :type)}: #{Map.get(change, :flow_id)} (#{Map.get(change, :change)}) [#{Map.get(change, :rule_id, "R-LOW-DEFAULT")}]"
   end

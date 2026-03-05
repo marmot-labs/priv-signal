@@ -125,4 +125,45 @@ defmodule PrivSignal.Diff.SemanticTest do
              &(&1.type == "confidence_changed")
            )
   end
+
+  test "matches changed variants by stable_id and emits flow_changed" do
+    base =
+      DiffFixtureHelper.build_artifact([
+        %{
+          "id" => "psf_variant_a",
+          "stable_id" => "psfs_login_email",
+          "source" => "Demo.User.email",
+          "source_key" => "email",
+          "source_class" => "direct_identifier",
+          "entrypoint" => "DemoWeb.UserController.login/2",
+          "sink" => %{"kind" => "logger", "subtype" => "Logger.info"},
+          "boundary" => "internal",
+          "confidence" => 0.5,
+          "evidence" => ["node_a"]
+        }
+      ])
+
+    candidate =
+      DiffFixtureHelper.build_artifact([
+        %{
+          "id" => "psf_variant_b",
+          "stable_id" => "psfs_login_email",
+          "source" => "Demo.User.email",
+          "source_key" => "email",
+          "source_class" => "direct_identifier",
+          "entrypoint" => "DemoWeb.UserController.login/2",
+          "sink" => %{"kind" => "http", "subtype" => "Req.post"},
+          "boundary" => "external",
+          "confidence" => 0.8,
+          "evidence" => ["node_b"]
+        }
+      ])
+
+    changes = Semantic.compare(base, candidate)
+
+    assert Enum.any?(changes, &(&1.type == "flow_changed" and &1.change == "external_sink_added"))
+    assert Enum.any?(changes, &(&1.type == "flow_changed" and &1.change == "boundary_changed"))
+    refute Enum.any?(changes, &(&1.type == "flow_added"))
+    refute Enum.any?(changes, &(&1.type == "flow_removed"))
+  end
 end

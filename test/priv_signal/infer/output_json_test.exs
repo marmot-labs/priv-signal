@@ -37,6 +37,8 @@ defmodule PrivSignal.Infer.Output.JSONTest do
       flows: [
         %{
           id: "psf_123",
+          stable_id: "psfs_123",
+          variant_id: "psf_123",
           source: "MyApp.User.email",
           entrypoint: "MyApp.Accounts.log_signup/2",
           sink: %{kind: "logger", subtype: "Logger.info"},
@@ -54,6 +56,8 @@ defmodule PrivSignal.Infer.Output.JSONTest do
     assert rendered.summary.node_count == 1
     assert length(rendered.nodes) == 1
     assert length(rendered.flows) == 1
+    assert hd(rendered.flows).stable_id == "psfs_123"
+    assert hd(rendered.flows).variant_id == "psf_123"
 
     [rendered_node] = rendered.nodes
     assert rendered_node.id == "psn_123"

@@ -1,6 +1,8 @@
 defmodule PrivSignal.Diff.Normalize do
   @moduledoc false
 
+  alias PrivSignal.Infer.FlowIdentity
+
   def normalize(artifact) when is_map(artifact) do
     schema_version = get(artifact, :schema_version)
 
@@ -51,8 +53,10 @@ defmodule PrivSignal.Diff.Normalize do
           provided
       end
 
-    %{
+    normalized = %{
       id: normalize_string(get(flow, :id)),
+      stable_id: normalize_string(get(flow, :stable_id)),
+      variant_id: normalize_string(get(flow, :variant_id)),
       source: source,
       source_key: normalize_string(get(flow, :source_key) || (source_node && source_node.key)),
       source_class:
@@ -70,10 +74,30 @@ defmodule PrivSignal.Diff.Normalize do
       confidence: normalize_confidence(get(flow, :confidence)),
       evidence: normalize_evidence(get(flow, :evidence, []))
     }
+
+    stable_id =
+      if normalized.stable_id in [nil, ""] do
+        FlowIdentity.id(normalized)
+      else
+        normalized.stable_id
+      end
+
+    variant_id =
+      cond do
+        normalized.variant_id not in [nil, ""] -> normalized.variant_id
+        normalized.id not in [nil, ""] -> normalized.id
+        true -> FlowIdentity.variant_id(normalized)
+      end
+
+    normalized
+    |> Map.put(:stable_id, stable_id)
+    |> Map.put(:variant_id, variant_id)
+    |> Map.put(:id, variant_id)
   end
 
   defp flow_sort_key(flow) do
     {
+      flow.stable_id,
       flow.id,
       flow.source,
       flow.source_class,
@@ -156,6 +180,7 @@ defmodule PrivSignal.Diff.Normalize do
 
   defp normalize_boundary(_), do: "internal"
 
+  defp normalize_string(nil), do: ""
   defp normalize_string(value) when is_binary(value), do: String.trim(value)
   defp normalize_string(value) when is_atom(value), do: value |> Atom.to_string() |> String.trim()
   defp normalize_string(value) when is_integer(value), do: Integer.to_string(value)

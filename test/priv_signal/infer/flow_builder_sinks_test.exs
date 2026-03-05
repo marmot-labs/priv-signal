@@ -11,7 +11,9 @@ defmodule PrivSignal.Infer.FlowBuilderSinksTest do
         %{
           id: "sink-#{kind}",
           node_type: "sink",
-          data_refs: [%{reference: "MyApp.User.email", class: "direct_identifier", sensitive: true}],
+          data_refs: [
+            %{reference: "MyApp.User.email", class: "direct_identifier", sensitive: true}
+          ],
           code_context: %{
             module: "MyApp.Module",
             function: "run/1",
@@ -24,7 +26,9 @@ defmodule PrivSignal.Infer.FlowBuilderSinksTest do
         %{
           id: "src-#{kind}",
           node_type: "source",
-          data_refs: [%{reference: "MyApp.User.email", class: "direct_identifier", sensitive: true}],
+          data_refs: [
+            %{reference: "MyApp.User.email", class: "direct_identifier", sensitive: true}
+          ],
           code_context: %{
             module: "MyApp.Module",
             function: "run/1",

@@ -37,4 +37,17 @@ defmodule PrivSignal.Score.RubricV2RulesTest do
     assert classified.event_class == "low"
     assert classified.unknown_event_type == true
   end
+
+  test "maps external transform removal to high class/rule" do
+    event = %{
+      event_id: "evt:4",
+      event_type: "transform_changed",
+      boundary_after: "external",
+      transform_delta: %{"removed" => ["Demo.User.accommodation_status"]}
+    }
+
+    assert {:ok, classified} = RubricV2.classify_event(event)
+    assert classified.event_class == "high"
+    assert classified.rule_id == "R2-HIGH-EXTERNAL-TRANSFORM-REMOVED"
+  end
 end

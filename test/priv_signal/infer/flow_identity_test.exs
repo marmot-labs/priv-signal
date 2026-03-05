@@ -19,8 +19,18 @@ defmodule PrivSignal.Infer.FlowIdentityTest do
 
     refute FlowIdentity.id(base) == FlowIdentity.id(Map.put(base, :source, "MyApp.User.phone"))
 
-    refute FlowIdentity.id(base) ==
+    assert FlowIdentity.id(base) ==
              FlowIdentity.id(put_in(base, [:sink, :subtype], "Logger.warning"))
+  end
+
+  test "variant identity changes when sink or boundary changes" do
+    base = sample_flow()
+
+    refute FlowIdentity.variant_id(base) ==
+             FlowIdentity.variant_id(put_in(base, [:sink, :subtype], "Logger.warning"))
+
+    refute FlowIdentity.variant_id(base) ==
+             FlowIdentity.variant_id(Map.put(base, :boundary, "external"))
   end
 
   defp sample_flow do

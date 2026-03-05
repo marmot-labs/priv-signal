@@ -440,5 +440,4 @@ defmodule PrivSignal.Config.Schema do
       key -> to_string(key)
     end)
   end
-
 end

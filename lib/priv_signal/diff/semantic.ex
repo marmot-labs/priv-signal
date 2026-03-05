@@ -27,9 +27,12 @@ defmodule PrivSignal.Diff.Semantic do
     added_node_keys =
       MapSet.difference(candidate.data_node_keys, base.data_node_keys) |> MapSet.to_list()
 
-    added_ids = MapSet.difference(candidate.flow_ids, base.flow_ids) |> MapSet.to_list()
-    removed_ids = MapSet.difference(base.flow_ids, candidate.flow_ids) |> MapSet.to_list()
     shared_ids = MapSet.intersection(base.flow_ids, candidate.flow_ids) |> MapSet.to_list()
+    base_only_ids = MapSet.difference(base.flow_ids, candidate.flow_ids) |> MapSet.to_list()
+    candidate_only_ids = MapSet.difference(candidate.flow_ids, base.flow_ids) |> MapSet.to_list()
+
+    {stable_pairs, remaining_base_ids, remaining_candidate_ids} =
+      pair_by_stable_identity(base_only_ids, candidate_only_ids, base, candidate)
 
     node_changes =
       added_node_keys
@@ -39,7 +42,7 @@ defmodule PrivSignal.Diff.Semantic do
       end)
 
     added =
-      added_ids
+      remaining_candidate_ids
       |> Enum.flat_map(fn flow_id ->
         flow = Map.fetch!(candidate.flows_by_id, flow_id)
 
@@ -50,14 +53,14 @@ defmodule PrivSignal.Diff.Semantic do
       end)
 
     removed =
-      removed_ids
+      remaining_base_ids
       |> Enum.map(fn flow_id ->
         flow = Map.fetch!(base.flows_by_id, flow_id)
 
         change(:flow_removed, flow_id, "flow_removed", flow_details(flow))
       end)
 
-    changed =
+    changed_exact =
       shared_ids
       |> Enum.flat_map(fn flow_id ->
         base_flow = Map.fetch!(base.flows_by_id, flow_id)
@@ -65,7 +68,15 @@ defmodule PrivSignal.Diff.Semantic do
         flow_changes(base_flow, candidate_flow, include_confidence?)
       end)
 
-    (node_changes ++ added ++ removed ++ changed)
+    changed_stable =
+      stable_pairs
+      |> Enum.flat_map(fn {base_id, candidate_id} ->
+        base_flow = Map.fetch!(base.flows_by_id, base_id)
+        candidate_flow = Map.fetch!(candidate.flows_by_id, candidate_id)
+        flow_changes(base_flow, candidate_flow, include_confidence?)
+      end)
+
+    (node_changes ++ added ++ removed ++ changed_exact ++ changed_stable)
     |> stable_sort_changes()
   end
 
@@ -106,6 +117,8 @@ defmodule PrivSignal.Diff.Semantic do
 
   defp sink_change(base_flow, candidate_flow) do
     if base_flow.sink != candidate_flow.sink do
+      flow_id = flow_change_id(base_flow, candidate_flow)
+
       change_type =
         if base_flow.boundary == "internal" and candidate_flow.boundary == "external" do
           "external_sink_added"
@@ -113,7 +126,7 @@ defmodule PrivSignal.Diff.Semantic do
           "external_sink_changed"
         end
 
-      change(:flow_changed, base_flow.id, change_type, %{
+      change(:flow_changed, flow_id, change_type, %{
         before_sink: base_flow.sink,
         after_sink: candidate_flow.sink,
         source_class: candidate_flow.source_class
@@ -123,7 +136,7 @@ defmodule PrivSignal.Diff.Semantic do
 
   defp boundary_change(base_flow, candidate_flow) do
     if base_flow.boundary != candidate_flow.boundary do
-      change(:flow_changed, base_flow.id, "boundary_changed", %{
+      change(:flow_changed, flow_change_id(base_flow, candidate_flow), "boundary_changed", %{
         before_boundary: base_flow.boundary,
         after_boundary: candidate_flow.boundary,
         source_class: candidate_flow.source_class
@@ -135,10 +148,15 @@ defmodule PrivSignal.Diff.Semantic do
 
   defp confidence_change(base_flow, candidate_flow, true) do
     if base_flow.confidence != candidate_flow.confidence do
-      change(:confidence_changed, base_flow.id, "confidence_changed", %{
-        before_confidence: base_flow.confidence,
-        after_confidence: candidate_flow.confidence
-      })
+      change(
+        :confidence_changed,
+        flow_change_id(base_flow, candidate_flow),
+        "confidence_changed",
+        %{
+          before_confidence: base_flow.confidence,
+          after_confidence: candidate_flow.confidence
+        }
+      )
     end
   end
 
@@ -147,6 +165,7 @@ defmodule PrivSignal.Diff.Semantic do
     |> maybe_add_behavioral_signal_persistence(base_flow, candidate_flow)
     |> maybe_add_inferred_attribute_external_transfer(base_flow, candidate_flow)
     |> maybe_add_sensitive_context_linkage(base_flow, candidate_flow)
+    |> maybe_add_sensitive_context_unlink(base_flow, candidate_flow)
   end
 
   defp maybe_add_behavioral_signal_persistence(changes, base_flow, candidate_flow) do
@@ -155,7 +174,7 @@ defmodule PrivSignal.Diff.Semantic do
       [
         change(
           :flow_changed,
-          candidate_flow.id,
+          flow_change_id(base_flow, candidate_flow),
           "behavioral_signal_persisted",
           flow_details(candidate_flow)
         )
@@ -172,7 +191,7 @@ defmodule PrivSignal.Diff.Semantic do
       [
         change(
           :flow_changed,
-          candidate_flow.id,
+          flow_change_id(base_flow, candidate_flow),
           "inferred_attribute_external_transfer",
           flow_details(candidate_flow)
         )
@@ -185,12 +204,38 @@ defmodule PrivSignal.Diff.Semantic do
 
   defp maybe_add_sensitive_context_linkage(changes, base_flow, candidate_flow) do
     if sensitive_context_linkage?(candidate_flow) and not sensitive_context_linkage?(base_flow) do
+      details =
+        flow_details(candidate_flow)
+        |> Map.put(:added_links, sensitive_context_links(candidate_flow))
+        |> Map.put(:removed_links, [])
+
       [
         change(
           :flow_changed,
-          candidate_flow.id,
+          flow_change_id(base_flow, candidate_flow),
           "sensitive_context_linkage_added",
-          flow_details(candidate_flow)
+          details
+        )
+        | changes
+      ]
+    else
+      changes
+    end
+  end
+
+  defp maybe_add_sensitive_context_unlink(changes, base_flow, candidate_flow) do
+    if sensitive_context_linkage?(base_flow) and not sensitive_context_linkage?(candidate_flow) do
+      details =
+        flow_details(candidate_flow || base_flow)
+        |> Map.put(:added_links, [])
+        |> Map.put(:removed_links, sensitive_context_links(base_flow))
+
+      [
+        change(
+          :flow_changed,
+          flow_change_id(base_flow, candidate_flow),
+          "sensitive_context_linkage_removed",
+          details
         )
         | changes
       ]
@@ -216,6 +261,26 @@ defmodule PrivSignal.Diff.Semantic do
   defp sensitive_context_linkage?(flow) do
     flow.source_class == "persistent_pseudonymous_identifier" and
       Enum.member?(flow.linked_classes || [], "sensitive_context_indicator")
+  end
+
+  defp sensitive_context_links(nil), do: []
+
+  defp sensitive_context_links(flow) do
+    if flow.source_class == "persistent_pseudonymous_identifier" do
+      links =
+        (flow.linked_refs || [])
+        |> Enum.map(&to_string/1)
+        |> Enum.map(&String.trim/1)
+        |> Enum.reject(&(&1 == ""))
+        |> Enum.uniq()
+        |> Enum.sort()
+
+      if Enum.member?(flow.linked_classes || [], "sensitive_context_indicator"),
+        do: links,
+        else: []
+    else
+      []
+    end
   end
 
   defp sink_persistence?(sink) when is_map(sink) do
@@ -269,4 +334,54 @@ defmodule PrivSignal.Diff.Semantic do
 
   defp stable_value_key(value) when is_list(value), do: Enum.map(value, &stable_value_key/1)
   defp stable_value_key(value), do: value
+
+  defp flow_change_id(base_flow, candidate_flow) do
+    candidate_id = candidate_flow && candidate_flow.stable_id
+    base_id = base_flow && base_flow.stable_id
+
+    cond do
+      is_binary(candidate_id) and candidate_id != "" -> candidate_id
+      is_binary(base_id) and base_id != "" -> base_id
+      is_binary(candidate_flow && candidate_flow.id) -> candidate_flow.id
+      true -> base_flow && base_flow.id
+    end
+  end
+
+  defp pair_by_stable_identity(base_ids, candidate_ids, base, candidate) do
+    base_by_stable =
+      Enum.group_by(base_ids, fn id -> Map.fetch!(base.flows_by_id, id).stable_id end)
+
+    candidate_by_stable =
+      Enum.group_by(candidate_ids, fn id -> Map.fetch!(candidate.flows_by_id, id).stable_id end)
+
+    stable_keys =
+      Map.keys(base_by_stable)
+      |> MapSet.new()
+      |> MapSet.intersection(MapSet.new(Map.keys(candidate_by_stable)))
+      |> MapSet.to_list()
+      |> Enum.sort()
+
+    {pairs, matched_base, matched_candidate} =
+      Enum.reduce(stable_keys, {[], MapSet.new(), MapSet.new()}, fn stable_id,
+                                                                    {pairs_acc, base_acc,
+                                                                     candidate_acc} ->
+        base_list = Map.get(base_by_stable, stable_id, []) |> Enum.sort()
+        candidate_list = Map.get(candidate_by_stable, stable_id, []) |> Enum.sort()
+
+        if length(base_list) == 1 and length(candidate_list) == 1 do
+          [base_id] = base_list
+          [candidate_id] = candidate_list
+
+          {pairs_acc ++ [{base_id, candidate_id}], MapSet.put(base_acc, base_id),
+           MapSet.put(candidate_acc, candidate_id)}
+        else
+          {pairs_acc, base_acc, candidate_acc}
+        end
+      end)
+
+    remaining_base_ids = Enum.reject(base_ids, &MapSet.member?(matched_base, &1))
+    remaining_candidate_ids = Enum.reject(candidate_ids, &MapSet.member?(matched_candidate, &1))
+
+    {pairs, remaining_base_ids, remaining_candidate_ids}
+  end
 end

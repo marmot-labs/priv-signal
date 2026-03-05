@@ -1,0 +1,54 @@
+{
+  "schema_version": "1",
+  "summary": {},
+  "nodes": [],
+  "flows": [
+    {
+      "id": "flow_user_profile_export",
+      "stable_id": "psfs_user_profile_export",
+      "source": "Demo.User.user_id",
+      "source_key": "demo_user_user_id",
+      "source_class": "persistent_pseudonymous_identifier",
+      "source_sensitive": false,
+      "linked_refs": [
+        "Demo.User.user_id"
+      ],
+      "linked_classes": [
+        "persistent_pseudonymous_identifier"
+      ],
+      "entrypoint": "Demo.Export.sync/1",
+      "sink": {
+        "kind": "http",
+        "subtype": "VendorSync.post"
+      },
+      "boundary": "external",
+      "confidence": 0.9,
+      "evidence": [
+        "node_user"
+      ]
+    }
+  ],
+  "errors": [],
+  "data_nodes": [
+    {
+      "key": "demo_user_user_id",
+      "name": "Demo.User.user_id",
+      "class": "persistent_pseudonymous_identifier",
+      "sensitive": false,
+      "scope": {
+        "module": "Demo.User",
+        "field": "user_id"
+      }
+    },
+    {
+      "key": "demo_user_accommodation_status",
+      "name": "Demo.User.accommodation_status",
+      "class": "sensitive_context_indicator",
+      "sensitive": true,
+      "scope": {
+        "module": "Demo.User",
+        "field": "accommodation_status"
+      }
+    }
+  ]
+}
