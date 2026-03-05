@@ -29,14 +29,17 @@ Design intent:
 | `PS-SCAN-007` | Telemetry | Telemetry/analytics emit includes PRD-linked fields | `HIGH`/`MEDIUM`/`LOW` | `:telemetry.execute([:acme,:login], %{}, %{email: user.email})` |
 | `PS-SCAN-008` | Database | Repo read/write touches PRD-linked fields in call args | `HIGH`/`MEDIUM`/`LOW` | `Repo.insert(%AuditLog{user_id: user.id, email: user.email})` |
 | `PS-SCAN-009` | LiveView | LiveView assign/push/render exposes PRD-linked fields | `HIGH`/`MEDIUM`/`LOW` | `push_event(socket, "profile", %{email: user.email})` |
+| `PS-SCAN-010` | Database | Wrapper-inherited DB sink (`inherited_db_wrapper`) for local helper calling `Repo.*` | `MEDIUM`/`LOW` based on confidence | `Persistence.append_step/1` calls `Repo.insert/1`; caller is classified as DB write |
+| `PS-SCAN-011` | HTTP | Indirect payload lineage evidence (`indirect_payload_ref`) for prebuilt/encoded payload vars | `MEDIUM`/`LOW` based on confidence | `payload = %{submitted_emails: ...}; body = Jason.encode!(payload); Req.post(..., body: body)` |
 
 Notes:
 
 - Scan classification is `confirmed_prd` vs `possible_prd`.
+- Scan confidence tiers are `confirmed`, `probable`, `possible`.
 - Scan markdown label mapping:
-  - `HIGH`: confirmed + high sensitivity
-  - `MEDIUM`: confirmed (non-high sensitivity)
-  - `LOW`: possible
+  - `HIGH`: confidence `confirmed` + high sensitivity
+  - `MEDIUM`: confidence `confirmed` (non-high sensitivity) or `probable`
+  - `LOW`: confidence `possible`
 
 ---
 

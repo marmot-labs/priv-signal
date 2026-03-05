@@ -12,6 +12,7 @@ defmodule PrivSignal.Scan.Output.Markdown do
       "**Scanner version:** #{result.scanner_version}",
       "**Files scanned:** #{summary.files_scanned || 0}",
       "**Confirmed findings:** #{summary.confirmed_count || 0}",
+      "**Probable findings:** #{Map.get(summary, :probable_count, probable_count(findings))}",
       "**Possible findings:** #{summary.possible_count || 0}",
       "**High sensitivity findings:** #{summary.high_sensitivity_count || 0}",
       "**Scan errors:** #{summary.errors || 0}"
@@ -54,9 +55,14 @@ defmodule PrivSignal.Scan.Output.Markdown do
     "- #{file}: #{reason}"
   end
 
-  defp format_severity(%{classification: :confirmed_prd, sensitivity: :high}), do: "HIGH"
-  defp format_severity(%{classification: :confirmed_prd}), do: "MEDIUM"
+  defp format_severity(%{confidence: :confirmed, sensitivity: :high}), do: "HIGH"
+  defp format_severity(%{confidence: :confirmed}), do: "MEDIUM"
+  defp format_severity(%{confidence: :probable}), do: "MEDIUM"
   defp format_severity(_), do: "LOW"
+
+  defp probable_count(findings) do
+    Enum.count(findings, &(&1.confidence == :probable))
+  end
 
   defp normalize_file_path(nil), do: nil
 

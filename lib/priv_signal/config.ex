@@ -4,6 +4,7 @@ defmodule PrivSignal.Config do
   """
 
   alias PrivSignal.Config.{
+    Matching,
     PRDNode,
     PRDScope,
     Scoring,
@@ -61,7 +62,7 @@ defmodule PrivSignal.Config do
 
     defmodule Database do
       @moduledoc false
-      defstruct enabled: true, repo_modules: []
+      defstruct enabled: true, repo_modules: [], wrapper_modules: [], wrapper_functions: []
     end
 
     defmodule LiveView do
@@ -75,6 +76,14 @@ defmodule PrivSignal.Config do
               telemetry: nil,
               database: nil,
               liveview: nil
+  end
+
+  defmodule Matching do
+    @moduledoc false
+    defstruct aliases: %{},
+              split_case: true,
+              singularize: true,
+              strip_prefixes: []
   end
 
   defmodule Scoring do
@@ -98,7 +107,12 @@ defmodule PrivSignal.Config do
     defstruct weights: nil, thresholds: nil, llm_interpretation: nil
   end
 
-  defstruct version: 1, prd_nodes: [], scanners: nil, scoring: nil
+  defstruct version: 1,
+            prd_nodes: [],
+            matching: nil,
+            scanners: nil,
+            scoring: nil,
+            strict_exact_only: false
 
   @doc false
   def from_map(map) when is_map(map) do
@@ -107,8 +121,10 @@ defmodule PrivSignal.Config do
     %__MODULE__{
       version: get(map, :version),
       prd_nodes: prd_nodes,
+      matching: matching_from_map(get(map, :matching)),
       scanners: scanners_from_map(get(map, :scanners)),
-      scoring: scoring_from_map(get(map, :scoring))
+      scoring: scoring_from_map(get(map, :scoring)),
+      strict_exact_only: strict_exact_only_from_map(map)
     }
   end
 
@@ -122,6 +138,8 @@ defmodule PrivSignal.Config do
       liveview: %LiveView{}
     }
   end
+
+  def default_matching, do: %Matching{}
 
   def default_scoring do
     defaults = PrivSignal.Score.Defaults
@@ -253,7 +271,9 @@ defmodule PrivSignal.Config do
   defp database_scanner_from_map(map) when is_map(map) do
     %Database{
       enabled: scanner_enabled(map),
-      repo_modules: scanner_list(map, :repo_modules)
+      repo_modules: scanner_list(map, :repo_modules),
+      wrapper_modules: scanner_list(map, :wrapper_modules),
+      wrapper_functions: scanner_list(map, :wrapper_functions)
     }
   end
 
@@ -287,6 +307,53 @@ defmodule PrivSignal.Config do
     end
   end
 
+  defp matching_from_map(nil), do: default_matching()
+
+  defp matching_from_map(map) when is_map(map) do
+    %Matching{
+      aliases: matching_aliases(map),
+      split_case: matching_bool(map, :split_case, true),
+      singularize: matching_bool(map, :singularize, true),
+      strip_prefixes: scanner_list(map, :strip_prefixes)
+    }
+  end
+
+  defp matching_from_map(_), do: default_matching()
+
+  defp matching_aliases(map) do
+    case get(map, :aliases) do
+      value when is_map(value) ->
+        value
+        |> Enum.reduce(%{}, fn {k, v}, acc ->
+          key = stringify_scalar(k)
+          val = stringify_scalar(v)
+
+          if key == nil or val == nil do
+            acc
+          else
+            Map.put(acc, key, val)
+          end
+        end)
+
+      _ ->
+        %{}
+    end
+  end
+
+  defp matching_bool(map, key, default) do
+    case get(map, key) do
+      value when is_boolean(value) -> value
+      _ -> default
+    end
+  end
+
+  defp strict_exact_only_from_map(map) do
+    case get(map, :strict_exact_only) do
+      value when is_boolean(value) -> value
+      _ -> false
+    end
+  end
+
   defp get(map, key) when is_atom(key) do
     case Map.fetch(map, key) do
       {:ok, value} -> value
@@ -306,4 +373,15 @@ defmodule PrivSignal.Config do
       {normalized_key, value}
     end)
   end
+
+  defp stringify_scalar(value) when is_binary(value) do
+    value =
+      value
+      |> String.trim()
+
+    if value == "", do: nil, else: value
+  end
+
+  defp stringify_scalar(value) when is_atom(value), do: value |> Atom.to_string() |> stringify_scalar()
+  defp stringify_scalar(_), do: nil
 end

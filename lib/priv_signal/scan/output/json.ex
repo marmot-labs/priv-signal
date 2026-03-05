@@ -17,6 +17,7 @@ defmodule PrivSignal.Scan.Output.JSON do
       id: finding.id,
       classification: finding.classification,
       confidence: finding.confidence,
+      confidence_hint: finding.confidence_hint,
       sensitivity: finding.sensitivity,
       module: finding.module,
       function: finding.function,
@@ -33,7 +34,9 @@ defmodule PrivSignal.Scan.Output.JSON do
     %{
       type: evidence.type,
       expression: evidence.expression,
-      fields: evidence.fields
+      fields: evidence.fields,
+      match_source: evidence.match_source,
+      lineage: evidence.lineage || []
     }
   end
 

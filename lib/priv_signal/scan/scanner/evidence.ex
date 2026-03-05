@@ -8,14 +8,16 @@ defmodule PrivSignal.Scan.Scanner.Evidence do
   def collect(node, %Inventory{} = inventory) do
     {_node, evidence} =
       Macro.prewalk(node, [], fn current_node, acc ->
-        fields = fields_for_node(current_node, inventory)
+        matches = matches_for_node(current_node, inventory)
+        fields = Enum.map(matches, & &1.node)
 
         if fields == [] do
           {current_node, acc}
         else
           type = evidence_type(current_node)
           expression = evidence_expression(current_node, type)
-          entry = %Evidence{type: type, expression: expression, fields: fields}
+          match_source = strongest_match_source(matches)
+          entry = %Evidence{type: type, expression: expression, fields: fields, match_source: match_source}
           {current_node, [entry | acc]}
         end
       end)
@@ -34,54 +36,58 @@ defmodule PrivSignal.Scan.Scanner.Evidence do
 
   def dedupe(evidence) do
     evidence
-    |> Enum.uniq_by(fn entry -> {entry.type, entry.expression, entry.fields} end)
-    |> Enum.sort_by(fn entry -> {entry.type, entry.expression, entry.fields} end)
+    |> Enum.uniq_by(fn entry -> {entry.type, entry.expression, entry.fields, entry.match_source, entry.lineage} end)
+    |> Enum.sort_by(fn entry ->
+      {entry.type, entry.expression, entry.fields, source_rank(entry.match_source), entry.lineage}
+    end)
   end
 
-  def fields_for_node({{:., _, [_receiver, field]}, _, []}, %Inventory{} = inventory)
+  def matches_for_node({{:., _, [_receiver, field]}, _, []}, %Inventory{} = inventory)
       when is_atom(field) do
-    Inventory.nodes_for_token(inventory, field)
+    Inventory.matches_for_token(inventory, field)
   end
 
-  def fields_for_node({:%{}, _, pairs}, %Inventory{} = inventory) when is_list(pairs) do
+  def matches_for_node({:%{}, _, pairs}, %Inventory{} = inventory) when is_list(pairs) do
     pairs
     |> Enum.flat_map(fn
-      {key, _value} -> Inventory.nodes_for_token(inventory, key)
+      {key, _value} -> Inventory.matches_for_token(inventory, key)
       _ -> []
     end)
   end
 
-  def fields_for_node(list, %Inventory{} = inventory) when is_list(list) do
+  def matches_for_node(list, %Inventory{} = inventory) when is_list(list) do
     case keyword_pairs(list) do
       [] ->
         []
 
       pairs ->
         Enum.flat_map(pairs, fn {key, _value} ->
-          Inventory.nodes_for_token(inventory, key)
+          Inventory.matches_for_token(inventory, key)
         end)
     end
   end
 
-  def fields_for_node({:%, _, [module_ast, _map_ast]}, %Inventory{} = inventory) do
+  def matches_for_node({:%, _, [module_ast, _map_ast]}, %Inventory{} = inventory) do
     case Utils.module_name(module_ast) do
       nil ->
         []
 
       module ->
         if Inventory.prd_module?(inventory, module) do
-          Map.get(inventory.nodes_by_module, module, [])
+          inventory.nodes_by_module
+          |> Map.get(module, [])
+          |> Enum.map(&%{node: &1, source: :exact})
         else
           []
         end
     end
   end
 
-  def fields_for_node(value, %Inventory{} = inventory) when is_atom(value) or is_binary(value) do
-    Inventory.nodes_for_token(inventory, value)
+  def matches_for_node(value, %Inventory{} = inventory) when is_atom(value) or is_binary(value) do
+    Inventory.matches_for_token(inventory, value)
   end
 
-  def fields_for_node(_, _), do: []
+  def matches_for_node(_, _), do: []
 
   defp evidence_type({{:., _, [_receiver, _field]}, _, []}), do: :direct_field_access
   defp evidence_type({:%{}, _, _}), do: :key_match
@@ -132,4 +138,15 @@ defmodule PrivSignal.Scan.Scanner.Evidence do
   defp keyword_pairs(list) do
     if Keyword.keyword?(list), do: list, else: []
   end
+
+  defp strongest_match_source(matches) do
+    matches
+    |> Enum.map(&Map.get(&1, :source))
+    |> Enum.min_by(&source_rank/1, fn -> nil end)
+  end
+
+  defp source_rank(:exact), do: 0
+  defp source_rank(:alias), do: 1
+  defp source_rank(:normalized), do: 2
+  defp source_rank(_), do: 3
 end

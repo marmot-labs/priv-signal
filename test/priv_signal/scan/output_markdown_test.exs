@@ -23,6 +23,7 @@ defmodule PrivSignal.Scan.Output.MarkdownTest do
       scanner_version: "1",
       summary: %{
         confirmed_count: 1,
+        probable_count: 0,
         possible_count: 0,
         high_sensitivity_count: 1,
         files_scanned: 10,
@@ -36,6 +37,7 @@ defmodule PrivSignal.Scan.Output.MarkdownTest do
 
     assert String.contains?(output, "PrivSignal PRD Scan")
     assert String.contains?(output, "Confirmed findings:** 1")
+    assert String.contains?(output, "Probable findings:** 0")
     assert String.contains?(output, "[HIGH]")
     assert String.contains?(output, "lib/bad.ex: failed to parse")
   end

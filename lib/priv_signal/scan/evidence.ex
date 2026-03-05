@@ -1,5 +1,9 @@
 defmodule PrivSignal.Scan.Evidence do
   @moduledoc false
 
-  defstruct type: nil, expression: nil, fields: []
+  defstruct type: nil,
+            expression: nil,
+            fields: [],
+            match_source: nil,
+            lineage: []
 end

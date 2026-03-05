@@ -15,8 +15,10 @@ defmodule PrivSignal.Config.Schema do
     errors = validate_version(map, errors)
     errors = validate_unsupported_keys(map, errors)
     errors = validate_prd_nodes(map, errors)
+    errors = validate_matching(map, errors)
     errors = validate_scanners(map, errors)
     errors = validate_scoring(map, errors)
+    errors = validate_strict_exact_only(map, errors)
 
     if errors == [] do
       {:ok, Config.from_map(map)}
@@ -186,6 +188,104 @@ defmodule PrivSignal.Config.Schema do
     end
   end
 
+  defp validate_matching(map, errors) do
+    case get(map, :matching) do
+      nil ->
+        errors
+
+      matching when is_map(matching) ->
+        errors
+        |> validate_alias_map(map, matching)
+        |> validate_optional_boolean(matching, :split_case, "matching.split_case")
+        |> validate_optional_boolean(matching, :singularize, "matching.singularize")
+        |> validate_string_list(matching, :strip_prefixes, "matching.strip_prefixes")
+
+      _ ->
+        ["matching must be a map" | errors]
+    end
+  end
+
+  defp validate_alias_map(errors, map, matching) do
+    prd_scope_fields =
+      map
+      |> get(:prd_nodes)
+      |> List.wrap()
+      |> Enum.flat_map(fn entry ->
+        case get(entry, :scope) do
+          scope when is_map(scope) ->
+            field = get(scope, :field)
+            if is_binary(field), do: [String.downcase(String.trim(field))], else: []
+
+          _ ->
+            []
+        end
+      end)
+      |> MapSet.new()
+
+    case get(matching, :aliases) do
+      nil ->
+        errors
+
+      aliases when is_map(aliases) ->
+        Enum.reduce(aliases, errors, fn {key, value}, acc ->
+          acc
+          |> validate_alias_key(key)
+          |> validate_alias_value(value)
+          |> validate_alias_target(value, prd_scope_fields)
+        end)
+
+      _ ->
+        ["matching.aliases must be a map of string->string" | errors]
+    end
+  end
+
+  defp validate_alias_key(errors, key) when is_binary(key) do
+    if String.trim(key) == "" do
+      ["matching.aliases keys must be non-empty strings" | errors]
+    else
+      errors
+    end
+  end
+
+  defp validate_alias_key(errors, _),
+    do: ["matching.aliases keys must be non-empty strings" | errors]
+
+  defp validate_alias_value(errors, value) when is_binary(value) do
+    if String.trim(value) == "" do
+      ["matching.aliases values must be non-empty strings" | errors]
+    else
+      errors
+    end
+  end
+
+  defp validate_alias_value(errors, _),
+    do: ["matching.aliases values must be non-empty strings" | errors]
+
+  defp validate_alias_target(errors, value, prd_scope_fields) when is_binary(value) do
+    normalized = value |> String.trim() |> String.downcase()
+
+    if normalized != "" and MapSet.member?(prd_scope_fields, normalized) do
+      errors
+    else
+      ["matching.aliases values must map to a declared prd_nodes.scope.field" | errors]
+    end
+  end
+
+  defp validate_alias_target(errors, _value, _prd_scope_fields), do: errors
+
+  defp validate_optional_boolean(errors, map, key, label) do
+    case get(map, key) do
+      nil ->
+        errors
+
+      value when is_boolean(value) ->
+        errors
+
+      _ ->
+        ["#{label} must be a boolean" | errors]
+    end
+  end
+
   defp validate_scanner_unknown_categories(errors, scanners) do
     allowed = MapSet.new(Enum.map(@scanner_categories, &Atom.to_string/1))
 
@@ -244,6 +344,16 @@ defmodule PrivSignal.Config.Schema do
       acc
       |> validate_scanner_enabled(database, "scanners.database.enabled")
       |> validate_string_list(database, :repo_modules, "scanners.database.repo_modules")
+      |> validate_string_list(
+        database,
+        :wrapper_modules,
+        "scanners.database.wrapper_modules"
+      )
+      |> validate_string_list(
+        database,
+        :wrapper_functions,
+        "scanners.database.wrapper_functions"
+      )
     end)
   end
 
@@ -310,6 +420,19 @@ defmodule PrivSignal.Config.Schema do
 
       _ ->
         ["scoring must be a map" | errors]
+    end
+  end
+
+  defp validate_strict_exact_only(map, errors) do
+    case get(map, :strict_exact_only) do
+      nil ->
+        errors
+
+      value when is_boolean(value) ->
+        errors
+
+      _ ->
+        ["strict_exact_only must be a boolean" | errors]
     end
   end
 

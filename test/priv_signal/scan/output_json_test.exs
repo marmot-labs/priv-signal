@@ -24,6 +24,8 @@ defmodule PrivSignal.Scan.Output.JSONTest do
         %Evidence{
           type: :direct_field_access,
           expression: "user.email",
+          match_source: :exact,
+          lineage: [],
           fields: [
             %{module: "MyApp.User", name: "email", class: "direct_identifier", sensitive: true}
           ]
@@ -35,6 +37,7 @@ defmodule PrivSignal.Scan.Output.JSONTest do
       scanner_version: "1",
       summary: %{
         confirmed_count: 1,
+        probable_count: 0,
         possible_count: 0,
         high_sensitivity_count: 1,
         files_scanned: 2,
@@ -53,6 +56,8 @@ defmodule PrivSignal.Scan.Output.JSONTest do
     assert json.inventory.field_count == 1
     assert length(json.findings) == 1
     assert hd(json.findings).classification == :confirmed_prd
+    assert hd(json.findings).confidence_hint == nil
     assert hd(hd(json.findings).evidence).type == :direct_field_access
+    assert hd(hd(json.findings).evidence).match_source == :exact
   end
 end

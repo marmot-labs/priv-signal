@@ -41,6 +41,8 @@ defmodule PrivSignal.Scan.Scanner.HTTP do
   end
 
   defp scan_function(path, module_name, function_def, inventory, scanner_cfg, additional_modules) do
+    provenance = build_provenance(function_def.body, inventory)
+
     {_node, findings} =
       Macro.prewalk(function_def.body, [], fn node, acc ->
         case sink_from_call(node, additional_modules) do
@@ -51,7 +53,7 @@ defmodule PrivSignal.Scan.Scanner.HTTP do
             evidence =
               node
               |> call_args()
-              |> Enum.flat_map(&Evidence.collect(&1, inventory))
+              |> Enum.flat_map(&collect_arg_evidence(&1, inventory, provenance))
               |> Evidence.dedupe()
 
             matched_nodes = Evidence.matched_nodes(evidence)
@@ -189,4 +191,108 @@ defmodule PrivSignal.Scan.Scanner.HTTP do
     |> Atom.to_string()
     |> String.trim_trailing("!")
   end
+
+  defp build_provenance(nil, _inventory), do: %{}
+
+  defp build_provenance(body, inventory) do
+    {_node, assignments} =
+      Macro.prewalk(body, %{}, fn node, acc ->
+        case node do
+          {:=, _, [lhs, rhs]} ->
+            case local_var(lhs) do
+              nil ->
+                {node, acc}
+
+              var_name ->
+                evidence = Evidence.collect(rhs, inventory)
+                deps = local_vars(rhs)
+                {node, Map.put(acc, var_name, %{evidence: evidence, deps: deps})}
+            end
+
+          _ ->
+            {node, acc}
+        end
+      end)
+
+    assignments
+  end
+
+  defp collect_arg_evidence(arg, inventory, provenance) do
+    direct = Evidence.collect(arg, inventory)
+    vars = [local_var(arg) | local_vars(arg)] |> Enum.reject(&is_nil/1) |> Enum.uniq()
+
+    {resolved_evidence, lineage} =
+      Enum.reduce(vars, {direct, []}, fn var_name, {ev_acc, chain_acc} ->
+        {resolved, chain} = resolve_var(var_name, provenance, MapSet.new(), [var_name], 0)
+        {Evidence.dedupe(ev_acc ++ resolved), chain ++ chain_acc}
+      end)
+
+    fields = Evidence.matched_nodes(resolved_evidence)
+
+    indirect =
+      if fields == [] or vars == [] do
+        []
+      else
+        [
+          %PrivSignal.Scan.Evidence{
+            type: :indirect_payload_ref,
+            expression:
+              "payload_lineage:" <> Enum.map_join(Enum.reverse(Enum.uniq(lineage)), "->", &Atom.to_string/1),
+            fields: fields,
+            match_source: strongest_match_source(resolved_evidence),
+            lineage: Enum.map(Enum.uniq(lineage), &Atom.to_string/1)
+          }
+        ]
+      end
+
+    resolved_evidence ++ indirect
+  end
+
+  defp resolve_var(_var_name, _provenance, _visited, lineage, depth) when depth > 6 do
+    {[], lineage}
+  end
+
+  defp resolve_var(var_name, provenance, visited, lineage, depth) do
+    if MapSet.member?(visited, var_name) do
+      {[], lineage}
+    else
+      entry = Map.get(provenance, var_name, %{evidence: [], deps: []})
+      visited = MapSet.put(visited, var_name)
+
+      {dep_evidence, dep_lineage} =
+        Enum.reduce(entry.deps, {[], lineage}, fn dep, {ev_acc, lineage_acc} ->
+          {dep_ev, dep_line} = resolve_var(dep, provenance, visited, [dep | lineage_acc], depth + 1)
+          {dep_ev ++ ev_acc, dep_line}
+        end)
+
+      {Evidence.dedupe(entry.evidence ++ dep_evidence), dep_lineage}
+    end
+  end
+
+  defp local_vars(ast) do
+    {_ast, vars} =
+      Macro.prewalk(ast, MapSet.new(), fn node, acc ->
+        case local_var(node) do
+          nil -> {node, acc}
+          name -> {node, MapSet.put(acc, name)}
+        end
+      end)
+
+    MapSet.to_list(vars)
+  end
+
+  defp local_var({name, _, context}) when is_atom(name) and is_atom(context), do: name
+  defp local_var(_), do: nil
+
+  defp strongest_match_source(evidence_entries) do
+    evidence_entries
+    |> Enum.map(&Map.get(&1, :match_source))
+    |> Enum.reject(&is_nil/1)
+    |> Enum.min_by(&source_rank/1, fn -> :normalized end)
+  end
+
+  defp source_rank(:exact), do: 0
+  defp source_rank(:normalized), do: 1
+  defp source_rank(:alias), do: 2
+  defp source_rank(_), do: 3
 end

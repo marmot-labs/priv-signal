@@ -4,6 +4,7 @@ defmodule PrivSignal.Scan.Classifier do
   alias PrivSignal.Scan.Finding
 
   @confirmed_evidence_types [:direct_field_access, :key_match, :prd_container]
+  @probable_evidence_types [:indirect_payload_ref, :inherited_db_wrapper]
 
   def classify(candidates) when is_list(candidates) do
     candidates
@@ -14,8 +15,9 @@ defmodule PrivSignal.Scan.Classifier do
 
   def classify_one(candidate) when is_map(candidate) do
     evidence_types = Enum.map(candidate.evidence || [], & &1.type)
+    match_sources = Enum.map(candidate.evidence || [], &Map.get(&1, :match_source))
     classification = classification(evidence_types)
-    confidence = confidence(classification)
+    confidence = confidence(classification, evidence_types, match_sources)
     matched_nodes = candidate.matched_nodes || []
 
     %Finding{
@@ -52,8 +54,28 @@ defmodule PrivSignal.Scan.Classifier do
     end
   end
 
-  defp confidence(:confirmed_prd), do: :confirmed
-  defp confidence(:possible_prd), do: :possible
+  defp confidence(:confirmed_prd, evidence_types, match_sources) do
+    cond do
+      has_exact_match?(match_sources) and Enum.any?(evidence_types, &(&1 in @confirmed_evidence_types)) ->
+        :confirmed
+
+      Enum.any?(evidence_types, &(&1 in @probable_evidence_types)) or
+          Enum.any?(match_sources, &(&1 in [:normalized, :alias])) ->
+        :probable
+
+      true ->
+        :possible
+    end
+  end
+
+  defp confidence(:possible_prd, evidence_types, match_sources) do
+    if Enum.any?(evidence_types, &(&1 in @probable_evidence_types)) or
+         Enum.any?(match_sources, &(&1 in [:normalized, :alias])) do
+      :probable
+    else
+      :possible
+    end
+  end
 
   defp sensitivity([]), do: :unknown
 
@@ -92,6 +114,10 @@ defmodule PrivSignal.Scan.Classifier do
   defp sensitivity_rank("low"), do: 1
   defp sensitivity_rank("medium"), do: 2
   defp sensitivity_rank("high"), do: 3
+
+  defp has_exact_match?(match_sources) do
+    Enum.any?(match_sources, &(&1 == :exact or is_nil(&1)))
+  end
 
   defp fingerprint(candidate, evidence_types, matched_nodes) do
     sorted_types =

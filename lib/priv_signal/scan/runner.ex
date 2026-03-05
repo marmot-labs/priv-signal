@@ -72,6 +72,7 @@ defmodule PrivSignal.Scan.Runner do
       scanner_version: @scanner_version,
       summary: %{
         confirmed_count: Enum.count(findings, &(&1.classification == :confirmed_prd)),
+        probable_count: Enum.count(findings, &(&1.confidence == :probable)),
         possible_count: Enum.count(findings, &(&1.classification == :possible_prd)),
         high_sensitivity_count: Enum.count(findings, &(&1.sensitivity == :high)),
         class_counts: class_counts(findings),

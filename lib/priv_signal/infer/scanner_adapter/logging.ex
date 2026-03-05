@@ -152,6 +152,7 @@ defmodule PrivSignal.Infer.ScannerAdapter.Logging do
   end
 
   defp confidence_value(:confirmed), do: 1.0
+  defp confidence_value(:probable), do: 0.85
   defp confidence_value(:possible), do: 0.7
   defp confidence_value(value) when is_number(value), do: value
   defp confidence_value(_), do: 0.5

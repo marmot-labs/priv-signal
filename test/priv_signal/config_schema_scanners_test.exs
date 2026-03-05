@@ -41,9 +41,21 @@ defmodule PrivSignal.ConfigSchemaScannersTest do
           "additional_render_functions" => ["MyAppWeb.API.render_json"]
         },
         "telemetry" => %{"enabled" => false, "additional_modules" => ["MyApp.Analytics"]},
-        "database" => %{"enabled" => true, "repo_modules" => ["MyApp.Repo"]},
+        "database" => %{
+          "enabled" => true,
+          "repo_modules" => ["MyApp.Repo"],
+          "wrapper_modules" => ["MyApp.Persistence"],
+          "wrapper_functions" => ["append_step/2"]
+        },
         "liveview" => %{"enabled" => true, "additional_modules" => ["MyAppWeb.CustomLive"]}
-      }
+      },
+      "matching" => %{
+        "aliases" => %{"invitee_email" => "email"},
+        "split_case" => true,
+        "singularize" => true,
+        "strip_prefixes" => ["submitted", "invitee"]
+      },
+      "strict_exact_only" => false
     }
 
     assert {:ok, parsed} = PrivSignal.Config.Schema.validate(config)
@@ -53,6 +65,11 @@ defmodule PrivSignal.ConfigSchemaScannersTest do
     assert parsed.scanners.http.internal_domains == ["internal.myapp.com"]
     assert parsed.scanners.telemetry.enabled == false
     assert parsed.scanners.database.repo_modules == ["MyApp.Repo"]
+    assert parsed.scanners.database.wrapper_modules == ["MyApp.Persistence"]
+    assert parsed.scanners.database.wrapper_functions == ["append_step/2"]
+    assert parsed.matching.aliases == %{"invitee_email" => "email"}
+    assert parsed.matching.strip_prefixes == ["submitted", "invitee"]
+    assert parsed.strict_exact_only == false
   end
 
   test "rejects malformed scanners configuration" do
@@ -71,8 +88,14 @@ defmodule PrivSignal.ConfigSchemaScannersTest do
         "logging" => %{"enabled" => "yes", "additional_modules" => "MyApp.Logging"},
         "http" => %{"enabled" => "yes", "additional_modules" => "MyApp.HTTP"},
         "controller" => %{"additional_render_functions" => [123]},
+        "database" => %{"wrapper_modules" => "MyApp.Persistence"},
         "unknown" => %{"enabled" => true}
-      }
+      },
+      "matching" => %{
+        "aliases" => %{"bad" => 12},
+        "split_case" => "yes"
+      },
+      "strict_exact_only" => "no"
     }
 
     assert {:error, errors} = PrivSignal.Config.Schema.validate(config)
@@ -82,6 +105,10 @@ defmodule PrivSignal.ConfigSchemaScannersTest do
     assert "scanners.http.enabled must be a boolean" in errors
     assert "scanners.http.additional_modules must be a list of strings" in errors
     assert "scanners.controller.additional_render_functions must be a list of strings" in errors
+    assert "scanners.database.wrapper_modules must be a list of strings" in errors
+    assert "matching.aliases values must be non-empty strings" in errors
+    assert "matching.split_case must be a boolean" in errors
+    assert "strict_exact_only must be a boolean" in errors
     assert "scanners.unknown is not a supported scanner category" in errors
   end
 

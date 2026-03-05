@@ -67,4 +67,49 @@ defmodule PrivSignal.Scan.ClassifierTest do
     assert finding.confidence == :possible
     assert finding.sensitivity == :unknown
   end
+
+  test "classifies normalized and provenance evidence as probable" do
+    candidates = [
+      %{
+        module: "MyApp.HTTP",
+        function: "send",
+        arity: 1,
+        file: "lib/my_app/http.ex",
+        line: 30,
+        sink: "Req.post",
+        matched_nodes: [
+          %{
+            module: "MyApp.User",
+            field: "email",
+            key: "user_email",
+            class: "direct_identifier",
+            sensitive: true
+          }
+        ],
+        evidence: [
+          %Evidence{
+            type: :token_match,
+            expression: "token:submitted_emails",
+            fields: [
+              %{module: "MyApp.User", field: "email", class: "direct_identifier", sensitive: true}
+            ],
+            match_source: :normalized
+          },
+          %Evidence{
+            type: :indirect_payload_ref,
+            expression: "payload_lineage:payload->attrs",
+            fields: [
+              %{module: "MyApp.User", field: "email", class: "direct_identifier", sensitive: true}
+            ],
+            match_source: :normalized,
+            lineage: ["payload", "attrs"]
+          }
+        ]
+      }
+    ]
+
+    [finding] = Classifier.classify(candidates)
+    assert finding.classification == :possible_prd
+    assert finding.confidence == :probable
+  end
 end

@@ -2,11 +2,17 @@ defmodule PrivSignal.Scan.InventoryTest do
   use ExUnit.Case, async: true
 
   alias PrivSignal.Config
-  alias PrivSignal.Config.{PRDNode, PRDScope}
+  alias PrivSignal.Config.{Matching, PRDNode, PRDScope}
   alias PrivSignal.Scan.Inventory
 
   test "build creates normalized deterministic lookup structures" do
     config = %Config{
+      matching: %Matching{
+        aliases: %{"invitee_email" => "email"},
+        split_case: true,
+        singularize: true,
+        strip_prefixes: ["submitted"]
+      },
       prd_nodes: [
         %PRDNode{
           key: "user_email",
@@ -41,6 +47,12 @@ defmodule PrivSignal.Scan.InventoryTest do
 
     email_nodes = Inventory.nodes_for_token(inventory, "EMAIL")
     assert length(email_nodes) == 2
+    assert length(Inventory.nodes_for_token(inventory, "submitted_emails")) == 2
+    assert length(Inventory.nodes_for_token(inventory, "userEmail")) == 2
+    assert length(Inventory.nodes_for_token(inventory, "invitee_email")) == 2
+
+    invitee_matches = Inventory.matches_for_token(inventory, "invitee_email")
+    assert Enum.all?(invitee_matches, &(&1.source == :alias))
 
     assert Enum.map(inventory.data_nodes, & &1.field) == ["email", "email", "phone"]
   end
