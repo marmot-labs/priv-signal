@@ -382,6 +382,8 @@ defmodule PrivSignal.Config do
     if value == "", do: nil, else: value
   end
 
-  defp stringify_scalar(value) when is_atom(value), do: value |> Atom.to_string() |> stringify_scalar()
+  defp stringify_scalar(value) when is_atom(value),
+    do: value |> Atom.to_string() |> stringify_scalar()
+
   defp stringify_scalar(_), do: nil
 end

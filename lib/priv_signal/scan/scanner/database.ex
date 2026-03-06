@@ -151,12 +151,34 @@ defmodule PrivSignal.Scan.Scanner.Database do
         []
 
       {target_module, function_name, arity} ->
-        if wrapper_allowed?(target_module, function_name, arity, wrapper_modules, wrapper_functions) do
-          summary = Map.get(summaries, {target_module, function_name, arity}, %{read?: false, write?: false})
+        if wrapper_allowed?(
+             target_module,
+             function_name,
+             arity,
+             wrapper_modules,
+             wrapper_functions
+           ) do
+          summary =
+            Map.get(summaries, {target_module, function_name, arity}, %{
+              read?: false,
+              write?: false
+            })
 
           []
-          |> maybe_add_wrapper_kind(summary.read?, "database_read", target_module, function_name, arity)
-          |> maybe_add_wrapper_kind(summary.write?, "database_write", target_module, function_name, arity)
+          |> maybe_add_wrapper_kind(
+            summary.read?,
+            "database_read",
+            target_module,
+            function_name,
+            arity
+          )
+          |> maybe_add_wrapper_kind(
+            summary.write?,
+            "database_write",
+            target_module,
+            function_name,
+            arity
+          )
         else
           []
         end

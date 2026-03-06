@@ -17,7 +17,14 @@ defmodule PrivSignal.Scan.Scanner.Evidence do
           type = evidence_type(current_node)
           expression = evidence_expression(current_node, type)
           match_source = strongest_match_source(matches)
-          entry = %Evidence{type: type, expression: expression, fields: fields, match_source: match_source}
+
+          entry = %Evidence{
+            type: type,
+            expression: expression,
+            fields: fields,
+            match_source: match_source
+          }
+
           {current_node, [entry | acc]}
         end
       end)
@@ -36,7 +43,9 @@ defmodule PrivSignal.Scan.Scanner.Evidence do
 
   def dedupe(evidence) do
     evidence
-    |> Enum.uniq_by(fn entry -> {entry.type, entry.expression, entry.fields, entry.match_source, entry.lineage} end)
+    |> Enum.uniq_by(fn entry ->
+      {entry.type, entry.expression, entry.fields, entry.match_source, entry.lineage}
+    end)
     |> Enum.sort_by(fn entry ->
       {entry.type, entry.expression, entry.fields, source_rank(entry.match_source), entry.lineage}
     end)

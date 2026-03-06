@@ -237,7 +237,8 @@ defmodule PrivSignal.Scan.Scanner.HTTP do
           %PrivSignal.Scan.Evidence{
             type: :indirect_payload_ref,
             expression:
-              "payload_lineage:" <> Enum.map_join(Enum.reverse(Enum.uniq(lineage)), "->", &Atom.to_string/1),
+              "payload_lineage:" <>
+                Enum.map_join(Enum.reverse(Enum.uniq(lineage)), "->", &Atom.to_string/1),
             fields: fields,
             match_source: strongest_match_source(resolved_evidence),
             lineage: Enum.map(Enum.uniq(lineage), &Atom.to_string/1)
@@ -261,7 +262,9 @@ defmodule PrivSignal.Scan.Scanner.HTTP do
 
       {dep_evidence, dep_lineage} =
         Enum.reduce(entry.deps, {[], lineage}, fn dep, {ev_acc, lineage_acc} ->
-          {dep_ev, dep_line} = resolve_var(dep, provenance, visited, [dep | lineage_acc], depth + 1)
+          {dep_ev, dep_line} =
+            resolve_var(dep, provenance, visited, [dep | lineage_acc], depth + 1)
+
           {dep_ev ++ ev_acc, dep_line}
         end)
 

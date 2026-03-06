@@ -56,7 +56,8 @@ defmodule PrivSignal.Scan.Classifier do
 
   defp confidence(:confirmed_prd, evidence_types, match_sources) do
     cond do
-      has_exact_match?(match_sources) and Enum.any?(evidence_types, &(&1 in @confirmed_evidence_types)) ->
+      has_exact_match?(match_sources) and
+          Enum.any?(evidence_types, &(&1 in @confirmed_evidence_types)) ->
         :confirmed
 
       Enum.any?(evidence_types, &(&1 in @probable_evidence_types)) or

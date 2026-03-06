@@ -32,10 +32,19 @@ defmodule PrivSignal.Scan.ImprovementsFixturePairTest do
              )
 
     assert Enum.any?(base.findings, &(&1.sink == "Repo.insert"))
-    refute Enum.any?(base.findings, &(&1.sink == "Wrapper.Fixtures.Pair.Persistence.append_step/1"))
+
+    refute Enum.any?(
+             base.findings,
+             &(&1.sink == "Wrapper.Fixtures.Pair.Persistence.append_step/1")
+           )
+
     refute Enum.any?(base.findings, &(&1.confidence == :probable))
     assert Enum.any?(candidate.findings, &(&1.confidence == :probable))
-    assert Enum.any?(candidate.findings, &(&1.sink == "Wrapper.Fixtures.Pair.Persistence.append_step/1"))
+
+    assert Enum.any?(
+             candidate.findings,
+             &(&1.sink == "Wrapper.Fixtures.Pair.Persistence.append_step/1")
+           )
 
     assert Enum.any?(candidate.findings, fn finding ->
              Enum.any?(finding.evidence, &(&1.type == :indirect_payload_ref))
@@ -105,7 +114,12 @@ defmodule PrivSignal.Scan.ImprovementsFixturePairTest do
   end
 
   defp tmp_root do
-    root = Path.join(System.tmp_dir!(), "priv_signal_improvements_#{System.unique_integer([:positive])}")
+    root =
+      Path.join(
+        System.tmp_dir!(),
+        "priv_signal_improvements_#{System.unique_integer([:positive])}"
+      )
+
     File.mkdir_p!(root)
 
     on_exit(fn -> File.rm_rf(root) end)

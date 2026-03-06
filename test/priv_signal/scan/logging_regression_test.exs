@@ -30,6 +30,7 @@ defmodule PrivSignal.Scan.LoggingRegressionTest do
 
     assert Map.drop(scanner_result.summary, [:scan_duration_ms]) ==
              Map.drop(legacy_result.summary, [:scan_duration_ms])
+
     assert scanner_result.findings == legacy_result.findings
     assert scanner_result.errors == legacy_result.errors
   end

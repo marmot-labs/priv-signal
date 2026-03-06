@@ -41,7 +41,8 @@ defmodule Mix.Tasks.PrivSignal.TransformRemovedE2ETest do
 
       assert Enum.any?(diff_payload["events"], fn event ->
                event["event_type"] == "transform_changed" and
-                 "Demo.User.accommodation_status" in (get_in(event, ["transform_delta", "removed"]) || [])
+                 "Demo.User.accommodation_status" in (get_in(event, ["transform_delta", "removed"]) ||
+                                                        [])
              end)
 
       Mix.Task.reenable("priv_signal.score")
