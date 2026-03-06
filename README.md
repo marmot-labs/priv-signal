@@ -1,21 +1,81 @@
 # PrivSignal
 
-PrivSignal is an open-source Elixir CLI that scores privacy risk for PR diffs
-using a project-defined inventory of privacy-relevant identifiers.
+PrivSignal is an Elixir CLI for detecting privacy drift in application code during CI. It lets engineering teams define a versioned catalog of privacy-relevant data in `priv_signal.yml`, generate a deterministic lockfile from the codebase, and then score pull requests by comparing the PR's generated lockfile against the baseline on the target branch.
 
-## Quickstart
+The primary use case is PR review: PrivSignal helps surface when a change introduces new handling of personal data, expands exposure to logs or telemetry, changes boundaries such as HTTP or controller responses, or otherwise invalidates the privacy assumptions your team has already documented. It is not a compliance engine and it does not replace legal or privacy review. It provides an explainable signal that tells reviewers when a change is worth a closer look.
+
+The same scanning primitives are also useful outside PR scoring. You can run `mix priv_signal.scan` as a repository audit to find privacy-relevant touchpoints such as logging, telemetry, controller responses, outbound HTTP calls, database access, and LiveView exposure patterns.
+
+## How It Works
+
+```mermaid
+flowchart TD
+    A[Author priv_signal.yml] --> B[Validate catalog]
+    B --> C[Run scan on main branch]
+    C --> D[Commit priv_signal.lockfile.json as baseline]
+    D --> E[Open pull request]
+    E --> F[CI runs scan on PR branch]
+    F --> G[Diff PR lockfile vs base branch lockfile]
+    G --> H[Score semantic diff]
+    H --> I[Review score and evidence]
+```
+
+Typical workflow:
+
+1. Create `priv_signal.yml` to describe the privacy-relevant fields and modules in your system.
+2. Run `mix priv_signal.validate` to confirm the config is structurally valid.
+3. Run `mix priv_signal.scan` on your default branch to generate `priv_signal.lockfile.json`.
+4. Commit both files. The lockfile becomes the baseline artifact PrivSignal compares against in future PRs.
+5. In CI for a pull request, run `mix priv_signal.scan` again to generate a fresh lockfile for the proposed code.
+6. Run `mix priv_signal.diff --base <target-branch-ref>` to compute the semantic privacy diff between the committed base artifact and the PR artifact.
+7. Run `mix priv_signal.score --diff ...` to turn that diff into a deterministic privacy risk score and summary.
+
+## Quick Start
+
+Generate a starter config:
 
 ```bash
 mix priv_signal.init
+```
+
+Validate the catalog:
+
+```bash
 mix priv_signal.validate
+```
+
+Generate the baseline lockfile:
+
+```bash
 mix priv_signal.scan
-mix priv_signal.diff --base origin/main --format json --output tmp/privacy_diff.json
+git add priv_signal.yml priv_signal.lockfile.json
+git commit -m "add PrivSignal baseline"
+```
+
+Score a pull request locally:
+
+```bash
+mix priv_signal.scan --json-path tmp/pr.lockfile.json
+mix priv_signal.diff \
+  --base origin/main \
+  --candidate-path tmp/pr.lockfile.json \
+  --artifact-path priv_signal.lockfile.json \
+  --format json \
+  --output tmp/privacy_diff.json
 mix priv_signal.score --diff tmp/privacy_diff.json --output tmp/priv_signal_score.json
+```
+
+If you want `scan` to fail on parse or scan errors, use strict mode:
+
+```bash
+mix priv_signal.scan --strict --json-path tmp/pr.lockfile.json
 ```
 
 ## Configuration
 
-PrivSignal uses a repo-root `priv_signal.yml` file as the source of truth. Example:
+PrivSignal uses a repository-root `priv_signal.yml` file as the source of truth for the privacy catalog. At minimum, you define `prd_nodes` that map privacy-relevant fields to the Elixir modules where they live.
+
+Example:
 
 ```yaml
 version: 1
@@ -28,6 +88,7 @@ prd_nodes:
     scope:
       module: MyApp.Accounts.User
       field: email
+
   - key: user_id
     label: User ID
     class: persistent_pseudonymous_identifier
@@ -35,6 +96,7 @@ prd_nodes:
     scope:
       module: MyApp.Accounts.User
       field: user_id
+
   - key: engagement_score
     label: Engagement Score
     class: inferred_attribute
@@ -66,139 +128,92 @@ scanners:
     additional_modules: []
 ```
 
-Classification reference:
+The generated `priv_signal.lockfile.json` is not intended to be hand-edited. Treat it as a checked-in baseline artifact produced by `mix priv_signal.scan`.
 
-- [`docs/classification_registry.md`](docs/classification_registry.md): stable registry IDs for scan detections, semantic diff classes, and score rubric rules.
+## Commands
 
-## Validation
+`mix priv_signal.init`
 
-Run deterministic flow validation against your codebase:
+- Creates a starter `priv_signal.yml` in the current directory.
 
-```bash
-mix priv_signal.validate
-```
+`mix priv_signal.validate`
 
-`mix priv_signal.score` no longer runs flow validation; it scores a semantic diff artifact produced by `mix priv_signal.diff`.
+- Validates `priv_signal.yml` against the current codebase and config schema.
 
-## Scan Lockfile
+`mix priv_signal.scan`
 
-Run deterministic static scanning to generate a node inventory artifact:
+- Runs deterministic static analysis and writes `priv_signal.lockfile.json` by default.
+- Common flags: `--json-path PATH`, `--strict`, `--quiet`, `--timeout-ms N`, `--max-concurrency N`.
 
-```bash
-mix priv_signal.scan
-```
+`mix priv_signal.diff --base <ref>`
 
-Useful options:
+- Compares the current or supplied candidate lockfile against the lockfile on the base ref.
+- Supports `--candidate-path`, `--candidate-ref`, `--artifact-path`, `--format`, `--include-confidence`, `--strict`, and `--output`.
 
-- `--strict`: fail command when any file parse/scan errors occur.
-- `--json-path PATH`: write lockfile JSON to a custom path (default: `priv_signal.lockfile.json`).
-- `--quiet`: suppress markdown output to stdout.
-- `--timeout-ms N`: per-file scan timeout in milliseconds.
-- `--max-concurrency N`: max concurrent file workers (bounded internally).
+`mix priv_signal.score --diff <path>`
 
-Example:
+- Consumes a semantic diff JSON artifact and writes a deterministic score JSON artifact.
+- Supports `--output`, `--quiet`, and `--help`.
 
-```bash
-mix priv_signal.scan --strict --json-path tmp/priv_signal.lockfile.json --timeout-ms 3000 --max-concurrency 4
-```
+## What `scan` Looks For
 
-Scan lockfile schema notes:
+PrivSignal currently scans for privacy-relevant usage across these categories:
 
-- Node keys are currently frozen as `node_type` and `code_context`.
-- Proto flow keys are emitted under top-level `flows` when `PRIV_SIGNAL_INFER_PROTO_FLOWS_V1` is enabled (default).
-- `schema_version` governs compatibility; any breaking key rename will bump `schema_version`.
-- `code_context` contains module/function/file path; line evidence belongs in `evidence`.
+- Logging sinks such as `Logger` and configured wrappers.
+- Outbound HTTP calls and boundary changes.
+- Controller response exposure.
+- Telemetry and analytics exports.
+- Database reads and writes.
+- LiveView assigns, render paths, and event exposure.
 
-Phase 4 scanner categories (enabled via `scanners.*.enabled`):
+This is why `scan` is useful both as the first step in the PR scoring workflow and as a standalone audit tool.
 
-- `logging`: logging sinks (`Logger`, `:logger`, and configured wrapper modules).
-- `http`: outbound HTTP client calls (`Req`, `Finch`, `Tesla`, etc.) with boundary classification.
-- `controller`: response exposure APIs (`json`, `render`, `send_resp`, etc.).
-- `telemetry`: telemetry and analytics exports (`:telemetry.execute`, AppSignal/Sentry/OpenTelemetry patterns).
-- `database`: `Repo` reads (`database_read` sources) and writes (`database_write` sinks).
-- `liveview`: UI exposure patterns (`assign`, `push_event`, `render`) in LiveView modules.
-
-Category overrides:
-
-- `scanners.logging.additional_modules`: custom logging wrapper modules.
-- `scanners.http.additional_modules`: custom HTTP wrapper modules.
-- `scanners.http.internal_domains` / `scanners.http.external_domains`: host boundary overrides.
-- `scanners.controller.additional_render_functions`: custom response render helpers.
-- `scanners.telemetry.additional_modules`: custom analytics/observability wrappers.
-- `scanners.database.repo_modules`: explicit repo modules to classify as DB access.
-- `scanners.liveview.additional_modules`: custom LiveView module roots.
-
-Proto-flow feature flag:
-
-- `PRIV_SIGNAL_INFER_PROTO_FLOWS_V1` (`true` by default)
-  - `true`: emits inferred `flows` in lockfile artifact
-  - `false`: emits `nodes` only (`flows: []`)
-
-## Environment Variables
-
-- `PRIV_SIGNAL_MODEL_API_KEY`: API key for optional advisory model interpretation (only required when `scoring.llm_interpretation.enabled: true`).
-- `PRIV_SIGNAL_SECONDARY_API_KEY`: OpenAI organization key for compatible endpoints (optional).
-- `PRIV_SIGNAL_MODEL_URL`: Override the OpenAI-compatible base URL (optional).
-- `PRIV_SIGNAL_MODEL`: Model identifier (defaults to `gpt-5`).
-- `PRIV_SIGNAL_TIMEOUT_MS`: Connect timeout in milliseconds (optional).
-- `PRIV_SIGNAL_RECV_TIMEOUT_MS`: Receive timeout in milliseconds (optional).
-- `PRIV_SIGNAL_POOL_TIMEOUT_MS`: Pool checkout timeout in milliseconds (optional).
-
-## GitHub Actions (Example)
+## CI Example
 
 ```yaml
 name: PrivSignal
+
 on:
   pull_request:
+
 jobs:
   priv_signal:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - uses: erlef/setup-beam@v1
         with:
           elixir-version: "1.18"
           otp-version: "27"
+
       - run: mix deps.get
-      - run: mix priv_signal.scan
-      - run: mix priv_signal.diff --base origin/main --format json --output tmp/privacy_diff.json
+      - run: mix priv_signal.validate
+      - run: mix priv_signal.scan --json-path tmp/pr.lockfile.json
+      - run: mix priv_signal.diff --base origin/main --candidate-path tmp/pr.lockfile.json --artifact-path priv_signal.lockfile.json --format json --output tmp/privacy_diff.json
       - run: mix priv_signal.score --diff tmp/privacy_diff.json --output tmp/priv_signal_score.json
-        env:
-          PRIV_SIGNAL_MODEL_API_KEY: ${{ secrets.PRIV_SIGNAL_MODEL_API_KEY }} # optional advisory only
 ```
 
-## Telemetry
+This assumes `priv_signal.lockfile.json` is already committed on the base branch.
 
-PrivSignal emits `:telemetry` events for key steps:
+## Inventory Bootstrap Skill
 
-- `[:priv_signal, :config, :load]`
-- `[:priv_signal, :validate, :index]`
-- `[:priv_signal, :validate, :run]`
-- `[:priv_signal, :git, :diff]`
-- `[:priv_signal, :llm, :request]`
-- `[:priv_signal, :risk, :assess]`
-- `[:priv_signal, :output, :write]`
-- `[:priv_signal, :scan, :inventory, :build]`
-- `[:priv_signal, :scan, :run]`
-- `[:priv_signal, :scan, :output, :write]`
-- `[:priv_signal, :infer, :run, :start]`
-- `[:priv_signal, :infer, :flow, :build]`
-- `[:priv_signal, :infer, :run, :stop]`
-- `[:priv_signal, :infer, :output, :write]`
+This repository includes an installable AI coding skill at [`skills/priv-signal-inventory/SKILL.md`](skills/priv-signal-inventory/SKILL.md) that helps bootstrap `priv_signal.yml` for Elixir codebases. It is designed for Codex- and Claude Code-style agent workflows and can inspect local schemas, infer likely PRD nodes, and produce a high-confidence first pass of the catalog.
+
+Use it when the hardest part of adoption is building the initial privacy catalog. It can significantly reduce the manual effort required to identify candidate modules, fields, aliases, and database wrapper boundaries before you validate and refine the file yourself.
 
 ## Installation
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `priv_signal` to your list of dependencies in `mix.exs`:
+PrivSignal is an Elixir project targeting Elixir `~> 1.18`.
+
+If you want to add it as a dependency from source:
 
 ```elixir
 def deps do
   [
-    {:priv_signal, "~> 0.1.0"}
+    {:priv_signal, git: "https://github.com/marmot-labs/priv-signal.git"}
   ]
 end
 ```
-
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at <https://hexdocs.pm/priv_signal>.
