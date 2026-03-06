@@ -14,6 +14,7 @@ defmodule PrivSignal.Test.DiffFixtureHelper do
     |> fixture_path(side)
     |> File.read!()
     |> Jason.decode!()
+    |> canonicalize_artifact()
   end
 
   def build_artifact(flows, opts \\ []) when is_list(flows) and is_list(opts) do
@@ -75,5 +76,49 @@ defmodule PrivSignal.Test.DiffFixtureHelper do
     |> Map.put_new("source_class", "direct_identifier")
     |> Map.put_new("source_sensitive", false)
     |> Map.put_new("confidence", 0.0)
+    |> maybe_put_location()
+  end
+
+  defp maybe_put_location(%{"location" => %{"file_path" => file_path}} = flow)
+       when is_binary(file_path) and file_path != "" do
+    flow
+  end
+
+  defp maybe_put_location(flow) do
+    case flow |> Map.get("entrypoint") |> location_from_entrypoint() do
+      nil -> flow
+      location -> Map.put(flow, "location", location)
+    end
+  end
+
+  defp location_from_entrypoint(entrypoint) when is_binary(entrypoint) do
+    case String.split(entrypoint, ".") do
+      [] ->
+        nil
+
+      parts ->
+        file_path =
+          parts
+          |> Enum.drop(-1)
+          |> module_path()
+
+        case file_path do
+          nil -> nil
+          path -> %{"file_path" => path, "line" => 1}
+        end
+    end
+  end
+
+  defp location_from_entrypoint(_), do: nil
+
+  defp module_path([]), do: nil
+
+  defp module_path(parts) do
+    path =
+      parts
+      |> Enum.map(&Macro.underscore/1)
+      |> Path.join()
+
+    "lib/" <> path <> ".ex"
   end
 end

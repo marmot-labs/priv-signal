@@ -2,6 +2,7 @@ defmodule PrivSignal.Diff.Normalize do
   @moduledoc false
 
   alias PrivSignal.Infer.FlowIdentity
+  alias PrivSignal.Infer.NodeNormalizer
 
   def normalize(artifact) when is_map(artifact) do
     schema_version = get(artifact, :schema_version)
@@ -16,10 +17,18 @@ defmodule PrivSignal.Diff.Normalize do
     data_node_keys = MapSet.new(Enum.map(data_nodes, & &1.key))
     data_nodes_by_reference = Map.new(data_nodes, &{&1.reference, &1})
 
+    nodes =
+      artifact
+      |> get(:nodes, [])
+      |> Enum.map(&normalize_node/1)
+      |> Enum.sort_by(&node_sort_key/1)
+
+    nodes_by_id = Map.new(nodes, &{&1.id, &1})
+
     flows =
       artifact
       |> get(:flows, [])
-      |> Enum.map(&normalize_flow(&1, data_nodes_by_reference))
+      |> Enum.map(&normalize_flow(&1, data_nodes_by_reference, nodes_by_id))
       |> Enum.sort_by(&flow_sort_key/1)
 
     %{
@@ -27,13 +36,15 @@ defmodule PrivSignal.Diff.Normalize do
       data_nodes: data_nodes,
       data_nodes_by_key: data_nodes_by_key,
       data_node_keys: data_node_keys,
+      nodes: nodes,
+      nodes_by_id: nodes_by_id,
       flows: flows,
       flows_by_id: Map.new(flows, &{&1.id, &1}),
       flow_ids: MapSet.new(Enum.map(flows, & &1.id))
     }
   end
 
-  defp normalize_flow(flow, data_nodes_by_reference) do
+  defp normalize_flow(flow, data_nodes_by_reference, nodes_by_id) do
     sink = get(flow, :sink, %{})
     source = normalize_source(get(flow, :source))
     source_node = Map.get(data_nodes_by_reference, source)
@@ -72,7 +83,10 @@ defmodule PrivSignal.Diff.Normalize do
       },
       boundary: normalize_boundary(get(flow, :boundary)),
       confidence: normalize_confidence(get(flow, :confidence)),
-      evidence: normalize_evidence(get(flow, :evidence, []))
+      evidence: normalize_evidence(get(flow, :evidence, [])),
+      location:
+        normalize_location(get(flow, :location)) ||
+          flow_location(get(flow, :evidence, []), nodes_by_id)
     }
 
     stable_id =
@@ -106,7 +120,41 @@ defmodule PrivSignal.Diff.Normalize do
       flow.sink.subtype,
       flow.boundary,
       flow.confidence,
-      flow.evidence
+      flow.evidence,
+      stable_location_key(flow.location)
+    }
+  end
+
+  defp normalize_node(node) when is_map(node) do
+    context = get(node, :code_context, %{})
+
+    %{
+      id: normalize_string(get(node, :id)),
+      node_type: normalize_string(get(node, :node_type)),
+      role_kind: normalize_string(get(get(node, :role, %{}), :kind)),
+      code_context: %{
+        module: normalize_string(get(context, :module)),
+        function: normalize_string(get(context, :function)),
+        file_path: normalize_path(get(context, :file_path)),
+        lines: normalize_lines(get(context, :lines))
+      },
+      evidence: normalize_node_evidence(get(node, :evidence, []))
+    }
+  end
+
+  defp normalize_node(_),
+    do: %{id: "", node_type: "", role_kind: "", code_context: %{}, evidence: []}
+
+  defp node_sort_key(node) do
+    context = Map.get(node, :code_context, %{})
+
+    {
+      node.id,
+      node.node_type,
+      Map.get(context, :file_path, ""),
+      Map.get(context, :function, ""),
+      Map.get(context, :lines, []),
+      node.role_kind
     }
   end
 
@@ -143,6 +191,19 @@ defmodule PrivSignal.Diff.Normalize do
 
   defp normalize_evidence(_), do: []
 
+  defp normalize_node_evidence(values) when is_list(values) do
+    values
+    |> Enum.map(fn evidence ->
+      %{
+        line: normalize_integer(get(evidence, :line))
+      }
+    end)
+    |> Enum.uniq()
+    |> Enum.sort_by(&(&1.line || 0))
+  end
+
+  defp normalize_node_evidence(_), do: []
+
   defp normalize_string_list(values) when is_list(values) do
     values
     |> Enum.map(&normalize_string/1)
@@ -169,6 +230,73 @@ defmodule PrivSignal.Diff.Normalize do
 
   defp normalize_confidence(_), do: 0.0
 
+  defp normalize_location(location) when is_map(location) do
+    case normalize_path(get(location, :file_path)) do
+      "" ->
+        nil
+
+      file_path ->
+        %{
+          file_path: file_path,
+          line: normalize_integer(get(location, :line))
+        }
+    end
+  end
+
+  defp normalize_location(_), do: nil
+
+  defp flow_location(evidence_ids, nodes_by_id) when is_map(nodes_by_id) do
+    evidence_ids
+    |> normalize_evidence()
+    |> Enum.map(&Map.get(nodes_by_id, &1))
+    |> Enum.reject(&is_nil/1)
+    |> Enum.filter(&present_string?(get_in(&1, [:code_context, :file_path])))
+    |> Enum.sort_by(&node_location_rank/1)
+    |> List.first()
+    |> case do
+      nil ->
+        nil
+
+      node ->
+        %{
+          file_path: get_in(node, [:code_context, :file_path]),
+          line: best_node_line(node)
+        }
+    end
+  end
+
+  defp flow_location(_evidence_ids, _nodes_by_id), do: nil
+
+  defp node_location_rank(node) do
+    {
+      node_type_rank(Map.get(node, :node_type)),
+      line_rank(best_node_line(node)),
+      get_in(node, [:code_context, :file_path]) || "",
+      Map.get(node, :id) || ""
+    }
+  end
+
+  defp node_type_rank("sink"), do: 0
+  defp node_type_rank("source"), do: 1
+  defp node_type_rank("entrypoint"), do: 2
+  defp node_type_rank(_), do: 3
+
+  defp line_rank(line) when is_integer(line), do: line
+  defp line_rank(_line), do: 999_999_999
+
+  defp best_node_line(node) do
+    context_lines = get_in(node, [:code_context, :lines]) || []
+    evidence_lines = Enum.map(Map.get(node, :evidence, []), & &1.line) |> Enum.reject(&is_nil/1)
+
+    case Enum.sort(context_lines ++ evidence_lines) do
+      [line | _] -> line
+      [] -> nil
+    end
+  end
+
+  defp stable_location_key(nil), do: {"", nil}
+  defp stable_location_key(location), do: {location.file_path || "", location.line}
+
   defp normalize_boundary(value) when is_atom(value),
     do: value |> Atom.to_string() |> normalize_boundary()
 
@@ -189,6 +317,30 @@ defmodule PrivSignal.Diff.Normalize do
     do: :erlang.float_to_binary(value, decimals: 4)
 
   defp normalize_string(_), do: ""
+
+  defp normalize_path(nil), do: ""
+
+  defp normalize_path(path) do
+    path
+    |> NodeNormalizer.canonical_file_path()
+    |> normalize_string()
+  end
+
+  defp normalize_lines(values) when is_list(values) do
+    values
+    |> Enum.map(&normalize_integer/1)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
+    |> Enum.sort()
+  end
+
+  defp normalize_lines(_), do: []
+
+  defp normalize_integer(value) when is_integer(value), do: value
+  defp normalize_integer(_), do: nil
+
+  defp present_string?(value) when is_binary(value), do: String.trim(value) != ""
+  defp present_string?(_), do: false
 
   defp reference("", field), do: field
   defp reference(module_name, ""), do: module_name

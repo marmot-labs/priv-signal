@@ -23,17 +23,20 @@ defmodule PrivSignal.Infer.ScannerAdapter.Logging do
   defp node_from_finding(finding, opts) do
     module_name = Map.get(finding, :module)
     file_path = Map.get(finding, :file)
+    line = Map.get(finding, :line)
     entrypoint = ModuleClassifier.classify(module_name, file_path, opts)
 
     node =
       %Node{
         node_type: node_type_from_finding(finding),
         data_refs: data_refs_from_finding(finding),
-        code_context: %{
-          module: module_name,
-          function: function_with_arity(finding),
-          file_path: file_path
-        },
+        code_context:
+          %{
+            module: module_name,
+            function: function_with_arity(finding),
+            file_path: file_path
+          }
+          |> maybe_put_lines(line),
         role: %{
           kind: role_kind_from_finding(finding),
           callee: canonical_callee(role_subtype_from_finding(finding)),
@@ -156,6 +159,9 @@ defmodule PrivSignal.Infer.ScannerAdapter.Logging do
   defp confidence_value(:possible), do: 0.7
   defp confidence_value(value) when is_number(value), do: value
   defp confidence_value(_), do: 0.5
+
+  defp maybe_put_lines(context, line) when is_integer(line), do: Map.put(context, :lines, [line])
+  defp maybe_put_lines(context, _line), do: context
 
   defp evidence_from_finding(finding) do
     line = Map.get(finding, :line)

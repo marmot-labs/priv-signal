@@ -44,6 +44,7 @@ defmodule PrivSignal.Diff.Render.JSON do
       rule_id: fetch(event, :rule_id),
       node_id: fetch(event, :node_id),
       edge_id: fetch(event, :edge_id),
+      location: normalize_location(fetch(event, :location)),
       entrypoint_kind: fetch(event, :entrypoint_kind),
       boundary_before: fetch(event, :boundary_before),
       boundary_after: fetch(event, :boundary_after),
@@ -59,4 +60,21 @@ defmodule PrivSignal.Diff.Render.JSON do
   defp fetch(map, key, default \\ nil) do
     Map.get(map, key) || Map.get(map, Atom.to_string(key)) || default
   end
+
+  defp normalize_location(nil), do: nil
+
+  defp normalize_location(location) when is_map(location) do
+    case fetch(location, :file_path) do
+      file_path when is_binary(file_path) and file_path != "" ->
+        %{
+          file_path: file_path,
+          line: fetch(location, :line)
+        }
+
+      _ ->
+        nil
+    end
+  end
+
+  defp normalize_location(_), do: nil
 end

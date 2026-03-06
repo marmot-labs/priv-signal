@@ -23,6 +23,7 @@ defmodule PrivSignal.Diff.SemanticV2Test do
            end)
 
     assert Enum.any?(events, &(&1.event_type in ["destination_changed", "boundary_changed"]))
+    assert Enum.all?(Enum.filter(events, &is_binary(&1.edge_id)), &is_map(&1.location))
   end
 
   test "produces stable ordering independent of input ordering" do
@@ -45,6 +46,7 @@ defmodule PrivSignal.Diff.SemanticV2Test do
         change: "sensitive_context_linkage_removed",
         severity: "low",
         rule_id: "R-LOW-DEFAULT",
+        location: %{file_path: "lib/demo/accounts.ex", line: 42},
         details: %{
           source: "Demo.User.user_id",
           source_class: "persistent_pseudonymous_identifier",
@@ -58,6 +60,7 @@ defmodule PrivSignal.Diff.SemanticV2Test do
 
     assert event.event_type == "transform_changed"
     assert event.boundary_after == "external"
+    assert event.location == %{file_path: "lib/demo/accounts.ex", line: 42}
     assert event.transform_delta["removed"] == ["Demo.User.accommodation_status"]
   end
 end

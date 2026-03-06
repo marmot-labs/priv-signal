@@ -47,7 +47,7 @@ defmodule PrivSignal.Diff.Semantic do
         flow = Map.fetch!(candidate.flows_by_id, flow_id)
 
         [
-          change(:flow_added, flow_id, "flow_added", flow_details(flow))
+          change(:flow_added, flow_id, "flow_added", flow_details(flow), flow.location)
           | semantic_trigger_changes(nil, flow)
         ]
       end)
@@ -57,7 +57,7 @@ defmodule PrivSignal.Diff.Semantic do
       |> Enum.map(fn flow_id ->
         flow = Map.fetch!(base.flows_by_id, flow_id)
 
-        change(:flow_removed, flow_id, "flow_removed", flow_details(flow))
+        change(:flow_removed, flow_id, "flow_removed", flow_details(flow), flow.location)
       end)
 
     changed_exact =
@@ -93,13 +93,19 @@ defmodule PrivSignal.Diff.Semantic do
 
   defp node_changes(%{class: "inferred_attribute"} = node) do
     [
-      change(:data_node_added, "node:#{node.key}", "new_inferred_attribute", %{
-        key: node.key,
-        name: node.name,
-        class: node.class,
-        sensitive: node.sensitive,
-        scope: node.scope
-      })
+      change(
+        :data_node_added,
+        "node:#{node.key}",
+        "new_inferred_attribute",
+        %{
+          key: node.key,
+          name: node.name,
+          class: node.class,
+          sensitive: node.sensitive,
+          scope: node.scope
+        },
+        nil
+      )
     ]
   end
 
@@ -126,21 +132,33 @@ defmodule PrivSignal.Diff.Semantic do
           "external_sink_changed"
         end
 
-      change(:flow_changed, flow_id, change_type, %{
-        before_sink: base_flow.sink,
-        after_sink: candidate_flow.sink,
-        source_class: candidate_flow.source_class
-      })
+      change(
+        :flow_changed,
+        flow_id,
+        change_type,
+        %{
+          before_sink: base_flow.sink,
+          after_sink: candidate_flow.sink,
+          source_class: candidate_flow.source_class
+        },
+        candidate_flow.location || base_flow.location
+      )
     end
   end
 
   defp boundary_change(base_flow, candidate_flow) do
     if base_flow.boundary != candidate_flow.boundary do
-      change(:flow_changed, flow_change_id(base_flow, candidate_flow), "boundary_changed", %{
-        before_boundary: base_flow.boundary,
-        after_boundary: candidate_flow.boundary,
-        source_class: candidate_flow.source_class
-      })
+      change(
+        :flow_changed,
+        flow_change_id(base_flow, candidate_flow),
+        "boundary_changed",
+        %{
+          before_boundary: base_flow.boundary,
+          after_boundary: candidate_flow.boundary,
+          source_class: candidate_flow.source_class
+        },
+        candidate_flow.location || base_flow.location
+      )
     end
   end
 
@@ -155,7 +173,8 @@ defmodule PrivSignal.Diff.Semantic do
         %{
           before_confidence: base_flow.confidence,
           after_confidence: candidate_flow.confidence
-        }
+        },
+        candidate_flow.location || base_flow.location
       )
     end
   end
@@ -176,7 +195,8 @@ defmodule PrivSignal.Diff.Semantic do
           :flow_changed,
           flow_change_id(base_flow, candidate_flow),
           "behavioral_signal_persisted",
-          flow_details(candidate_flow)
+          flow_details(candidate_flow),
+          candidate_flow.location
         )
         | changes
       ]
@@ -193,7 +213,8 @@ defmodule PrivSignal.Diff.Semantic do
           :flow_changed,
           flow_change_id(base_flow, candidate_flow),
           "inferred_attribute_external_transfer",
-          flow_details(candidate_flow)
+          flow_details(candidate_flow),
+          candidate_flow.location
         )
         | changes
       ]
@@ -214,7 +235,8 @@ defmodule PrivSignal.Diff.Semantic do
           :flow_changed,
           flow_change_id(base_flow, candidate_flow),
           "sensitive_context_linkage_added",
-          details
+          details,
+          candidate_flow.location
         )
         | changes
       ]
@@ -235,7 +257,8 @@ defmodule PrivSignal.Diff.Semantic do
           :flow_changed,
           flow_change_id(base_flow, candidate_flow),
           "sensitive_context_linkage_removed",
-          details
+          details,
+          base_flow.location || (candidate_flow && candidate_flow.location)
         )
         | changes
       ]
@@ -309,12 +332,13 @@ defmodule PrivSignal.Diff.Semantic do
     }
   end
 
-  defp change(type, flow_id, change, details) do
+  defp change(type, flow_id, change, details, location) do
     %{
       type: Atom.to_string(type),
       flow_id: flow_id,
       change: change,
-      details: details
+      details: details,
+      location: location
     }
   end
 

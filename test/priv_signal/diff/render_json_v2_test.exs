@@ -18,6 +18,7 @@ defmodule PrivSignal.Diff.Render.JSONV2Test do
           rule_id: "R2-LOW-PRIVACY-RELEVANT-RESIDUAL-CHANGE",
           node_id: nil,
           edge_id: "z_flow",
+          location: %{file_path: "lib/demo/user_controller.ex", line: 10},
           details: %{}
         },
         %{
@@ -27,6 +28,7 @@ defmodule PrivSignal.Diff.Render.JSONV2Test do
           rule_id: "R2-HIGH-NEW-EXTERNAL-PII-EGRESS",
           node_id: nil,
           edge_id: "a_flow",
+          location: %{file_path: "lib/demo/user_controller.ex", line: 22},
           details: %{}
         }
       ]
@@ -43,6 +45,7 @@ defmodule PrivSignal.Diff.Render.JSONV2Test do
     [first | _] = rendered.events
     assert first.event_class == "high"
     assert first.edge_id == "a_flow"
+    assert first.location == %{file_path: "lib/demo/user_controller.ex", line: 22}
   end
 
   test "schema version is explicit and stable for v2" do

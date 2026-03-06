@@ -27,13 +27,15 @@ defmodule PrivSignal.Diff.SemanticV2 do
     details = Map.get(change, :details, %{})
     boundary_before = boundary_before(change, details)
     boundary_after = boundary_after(change, details)
+    {node_id, edge_id} = object_ids(change)
 
     event = %{
       event_type: event_type,
       event_class: Map.get(change, :severity, "low"),
       rule_id: Map.get(change, :rule_id),
-      node_id: nil,
-      edge_id: Map.get(change, :flow_id),
+      node_id: node_id,
+      edge_id: edge_id,
+      location: Map.get(change, :location),
       entrypoint_kind: entrypoint_kind(details),
       boundary_before: boundary_before,
       boundary_after: boundary_after,
@@ -230,6 +232,10 @@ defmodule PrivSignal.Diff.SemanticV2 do
   end
 
   defp transform_delta(_, _), do: %{"added" => [], "removed" => []}
+
+  defp object_ids(%{type: "data_node_added", flow_id: flow_id}), do: {flow_id, nil}
+  defp object_ids(%{flow_id: flow_id}), do: {nil, flow_id}
+  defp object_ids(_), do: {nil, nil}
 
   defp class_rank("high"), do: 0
   defp class_rank("medium"), do: 1

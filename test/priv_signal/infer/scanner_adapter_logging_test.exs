@@ -18,6 +18,7 @@ defmodule PrivSignal.Infer.ScannerAdapter.LoggingTest do
     assert node.code_context.module == "MyAppWeb.UserController"
     assert node.code_context.function == "create/2"
     assert node.code_context.file_path == "lib/my_app_web/controllers/user_controller.ex"
+    assert node.code_context.lines == [12]
     assert node.entrypoint_context.kind == "controller"
     assert node.entrypoint_context.confidence >= 0.88
 

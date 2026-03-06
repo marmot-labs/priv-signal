@@ -45,4 +45,50 @@ defmodule PrivSignal.Diff.NormalizeTest do
     assert flow.confidence == 0.9
     assert flow.evidence == ["a", "b"]
   end
+
+  test "normalization derives flow location from evidence nodes" do
+    artifact = %{
+      "schema_version" => "1.2",
+      "nodes" => [
+        %{
+          "id" => "source_node",
+          "node_type" => "source",
+          "code_context" => %{
+            "module" => "Demo.Accounts",
+            "function" => "register/1",
+            "file_path" => "lib/demo/accounts.ex",
+            "lines" => [12]
+          },
+          "evidence" => [%{"line" => 12}]
+        },
+        %{
+          "id" => "sink_node",
+          "node_type" => "sink",
+          "code_context" => %{
+            "module" => "Demo.Accounts",
+            "function" => "register/1",
+            "file_path" => "lib/demo/accounts.ex",
+            "lines" => [44]
+          },
+          "evidence" => [%{"line" => 44}]
+        }
+      ],
+      "flows" => [
+        %{
+          "id" => "flow_1",
+          "source" => "Demo.User.email",
+          "entrypoint" => "Demo.Accounts.register/1",
+          "sink" => %{"kind" => "http", "subtype" => "Req.post!/2"},
+          "boundary" => "external",
+          "confidence" => 0.9,
+          "evidence" => ["source_node", "sink_node"]
+        }
+      ]
+    }
+
+    normalized = Normalize.normalize(artifact)
+    [flow] = normalized.flows
+
+    assert flow.location == %{file_path: "lib/demo/accounts.ex", line: 44}
+  end
 end

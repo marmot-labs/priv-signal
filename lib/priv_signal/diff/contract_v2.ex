@@ -44,7 +44,8 @@ defmodule PrivSignal.Diff.ContractV2 do
   defp validate_required(event, idx) do
     with :ok <- require_non_empty_string(event, :event_id, idx),
          :ok <- require_non_empty_string(event, :event_type, idx),
-         :ok <- require_node_or_edge(event, idx) do
+         :ok <- require_node_or_edge(event, idx),
+         :ok <- require_edge_location(event, idx) do
       :ok
     end
   end
@@ -97,6 +98,28 @@ defmodule PrivSignal.Diff.ContractV2 do
 
   defp present_string?(value) when is_binary(value), do: String.trim(value) != ""
   defp present_string?(_), do: false
+
+  defp require_edge_location(event, idx) do
+    edge_id = fetch(event, :edge_id)
+
+    if present_string?(edge_id) do
+      case fetch(event, :location) do
+        location when is_map(location) ->
+          file_path = fetch(location, :file_path)
+
+          if present_string?(file_path) do
+            :ok
+          else
+            {:error, {:missing_required_field, %{index: idx, field: "location.file_path"}}}
+          end
+
+        _ ->
+          {:error, {:missing_required_field, %{index: idx, field: "location"}}}
+      end
+    else
+      :ok
+    end
+  end
 
   defp fetch(map, key) when is_map(map) do
     Map.get(map, key) || Map.get(map, Atom.to_string(key))

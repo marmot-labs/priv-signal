@@ -13,7 +13,8 @@ defmodule PrivSignal.Diff.ContractV2Test do
         event_id: EventId.generate(%{event_type: "edge_added", edge_id: "flow_1"}),
         event_type: "edge_added",
         event_class: "medium",
-        edge_id: "flow_1"
+        edge_id: "flow_1",
+        location: %{file_path: "lib/demo/user_controller.ex", line: 12}
       }
     ]
 
@@ -26,16 +27,32 @@ defmodule PrivSignal.Diff.ContractV2Test do
         event_id: "evt:b",
         event_type: "edge_added",
         event_class: "medium",
-        edge_id: "flow_2"
+        edge_id: "flow_2",
+        location: %{file_path: "lib/demo/user_controller.ex", line: 12}
       },
       %{
         event_id: "evt:a",
         event_type: "destination_changed",
         event_class: "high",
-        edge_id: "flow_1"
+        edge_id: "flow_1",
+        location: %{file_path: "lib/demo/user_controller.ex", line: 18}
       }
     ]
 
     assert {:ok, []} = ContractV2.validate_events(events, strict: true)
+  end
+
+  test "requires location.file_path for edge events" do
+    events = [
+      %{
+        event_id: "evt:a",
+        event_type: "edge_added",
+        event_class: "medium",
+        edge_id: "flow_1"
+      }
+    ]
+
+    assert {:error, {:missing_required_field, %{field: "location"}}} =
+             ContractV2.validate_events(events, strict: true)
   end
 end
