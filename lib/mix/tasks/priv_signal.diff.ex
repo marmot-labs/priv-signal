@@ -40,7 +40,7 @@ defmodule Mix.Tasks.PrivSignal.Diff do
       end
     else
       {:error, errors} when is_list(errors) ->
-        Enum.each(errors, &Mix.shell().error/1)
+        Enum.each(errors, fn error -> Mix.shell().error(error) end)
         Mix.shell().info(usage())
         Mix.raise("diff failed")
 

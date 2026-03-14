@@ -9,8 +9,11 @@ defmodule PrivSignal.Score.Input do
          :ok <- validate(decoded) do
       {:ok, normalize(decoded)}
     else
-      {:error, %Jason.DecodeError{} = error} ->
+      {:error, error} when is_exception(error) ->
         {:error, {:diff_json_parse_failed, Exception.message(error)}}
+
+      {:error, reason} when is_binary(reason) ->
+        {:error, {:diff_json_parse_failed, reason}}
 
       {:error, reason} ->
         {:error, reason}
