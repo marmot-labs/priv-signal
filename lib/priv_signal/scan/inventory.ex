@@ -12,7 +12,9 @@ defmodule PrivSignal.Scan.Inventory do
             token_nodes: %{},
             normalized_token_nodes: %{},
             alias_token_nodes: %{},
-            matching: %PrivSignal.Config.Matching{}
+            alias_canonical_tokens: MapSet.new(),
+            matching: %PrivSignal.Config.Matching{},
+            strict_exact_only: false
 
   def build(%Config{} = config) do
     data_nodes =
@@ -61,6 +63,7 @@ defmodule PrivSignal.Scan.Inventory do
     matching = config.matching || Config.default_matching()
     normalized_token_nodes = build_normalized_index(data_nodes, matching)
     alias_token_nodes = build_alias_index(token_nodes, matching)
+    alias_canonical_tokens = alias_canonical_tokens(matching)
 
     %__MODULE__{
       modules: modules,
@@ -71,7 +74,9 @@ defmodule PrivSignal.Scan.Inventory do
       token_nodes: token_nodes,
       normalized_token_nodes: normalized_token_nodes,
       alias_token_nodes: alias_token_nodes,
-      matching: matching
+      alias_canonical_tokens: alias_canonical_tokens,
+      matching: matching,
+      strict_exact_only: config.strict_exact_only == true
     }
   end
 
@@ -87,18 +92,25 @@ defmodule PrivSignal.Scan.Inventory do
       []
     else
       exact = Map.get(inventory.token_nodes, normalized, [])
-      alias_matches = Map.get(inventory.alias_token_nodes, normalized, [])
 
-      normalized_matches =
-        token
-        |> normalized_candidates(inventory.matching)
-        |> Enum.flat_map(&Map.get(inventory.normalized_token_nodes, &1, []))
+      if inventory.strict_exact_only do
+        []
+        |> append_matches(exact, :exact)
+        |> dedupe_matches()
+      else
+        alias_matches = Map.get(inventory.alias_token_nodes, normalized, [])
 
-      []
-      |> append_matches(exact, :exact)
-      |> append_matches(alias_matches, :alias)
-      |> append_matches(normalized_matches, :normalized)
-      |> dedupe_matches()
+        normalized_matches =
+          token
+          |> lookup_normalized_candidates(inventory)
+          |> Enum.flat_map(&Map.get(inventory.normalized_token_nodes, &1, []))
+
+        []
+        |> append_matches(exact, :exact)
+        |> append_matches(alias_matches, :alias)
+        |> append_matches(normalized_matches, :normalized)
+        |> dedupe_matches()
+      end
     end
   end
 
@@ -166,7 +178,7 @@ defmodule PrivSignal.Scan.Inventory do
 
   defp build_normalized_index(data_nodes, matching) do
     Enum.reduce(data_nodes, %{}, fn node, acc ->
-      candidates = normalized_candidates(node.field, matching)
+      candidates = normalized_index_candidates(node.field, matching)
 
       Enum.reduce(candidates, acc, fn token, token_acc ->
         Map.update(token_acc, token, [node], fn nodes ->
@@ -177,6 +189,15 @@ defmodule PrivSignal.Scan.Inventory do
     |> Map.new(fn {token, nodes} ->
       {token, nodes |> Enum.uniq() |> Enum.sort_by(&{&1.module, &1.field, &1.class, &1.key})}
     end)
+  end
+
+  defp alias_canonical_tokens(matching) do
+    matching
+    |> Map.get(:aliases, %{})
+    |> Map.values()
+    |> Enum.map(&normalize_token/1)
+    |> Enum.reject(&is_nil/1)
+    |> MapSet.new()
   end
 
   defp build_alias_index(token_nodes, matching) do
@@ -195,11 +216,45 @@ defmodule PrivSignal.Scan.Inventory do
     end)
   end
 
-  defp normalized_candidates(token, matching) do
+  defp normalized_index_candidates(token, matching) do
+    {base, parts, prefix_candidates} = normalized_candidate_parts(token, matching)
+
+    if is_nil(base) do
+      []
+    else
+      ([base] ++ conservative_suffix_candidates(parts) ++ prefix_candidates)
+      |> Enum.map(&normalize_token/1)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
+    end
+  end
+
+  defp lookup_normalized_candidates(token, inventory) do
+    {base, parts, prefix_candidates} = normalized_candidate_parts(token, inventory.matching)
+
+    if is_nil(base) do
+      []
+    else
+      single_part_candidates =
+        parts
+        |> Enum.filter(&(length(parts) == 2 and meaningful_single_part?(&1)))
+        |> Enum.filter(fn part ->
+          MapSet.member?(inventory.key_tokens, part) or
+            MapSet.member?(inventory.alias_canonical_tokens, part)
+        end)
+
+      ([base] ++ conservative_suffix_candidates(parts) ++ prefix_candidates ++ single_part_candidates)
+      |> Enum.map(&normalize_token/1)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
+    end
+  end
+
+  defp normalized_candidate_parts(token, matching) do
     token = normalize_raw_token(token)
 
     if is_nil(token) do
-      []
+      {nil, [], []}
     else
       split_case = Map.get(matching, :split_case, true)
       singularize = Map.get(matching, :singularize, true)
@@ -223,25 +278,55 @@ defmodule PrivSignal.Scan.Inventory do
         |> Enum.reject(&is_nil/1)
         |> Enum.flat_map(fn prefix ->
           if String.starts_with?(base, prefix <> "_") do
-            [String.replace_prefix(base, prefix <> "_", "")]
+            base
+            |> String.replace_prefix(prefix <> "_", "")
+            |> normalize_candidate(singularize)
           else
             []
           end
         end)
 
-      dynamic_suffixes =
-        1..length(parts)
-        |> Enum.flat_map(fn idx ->
-          suffix = Enum.drop(parts, idx - 1)
-          if suffix == [], do: [], else: [Enum.join(suffix, "_")]
-        end)
-
-      ([base] ++ parts ++ dynamic_suffixes ++ prefix_candidates)
-      |> Enum.map(&normalize_token/1)
-      |> Enum.reject(&is_nil/1)
-      |> Enum.uniq()
+      {base, parts, prefix_candidates}
     end
   end
+
+  defp conservative_suffix_candidates(parts) when length(parts) < 2, do: []
+
+  defp conservative_suffix_candidates(parts) do
+    2..length(parts)
+    |> Enum.flat_map(fn suffix_length ->
+      suffix = Enum.take(parts, -suffix_length)
+
+      if valid_suffix_candidate?(suffix) do
+        [Enum.join(suffix, "_")]
+      else
+        []
+      end
+    end)
+  end
+
+  defp valid_suffix_candidate?(suffix_parts) when length(suffix_parts) < 2, do: false
+
+  defp valid_suffix_candidate?(suffix_parts) do
+    head = List.first(suffix_parts)
+    tail = List.last(suffix_parts)
+
+    not generic_segment?(head) and not generic_segment?(tail)
+  end
+
+  defp normalize_candidate(candidate, singularize) do
+    candidate
+    |> String.split("_", trim: true)
+    |> maybe_singularize(singularize)
+    |> case do
+      [] -> []
+      normalized_parts -> [Enum.join(normalized_parts, "_")]
+    end
+  end
+
+  defp meaningful_single_part?(part), do: part in ["email", "phone", "ssn"]
+
+  defp generic_segment?(segment), do: segment in ["id", "user", "client", "context", "request"]
 
   defp normalize_raw_token(nil), do: nil
 
