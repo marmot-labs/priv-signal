@@ -1,12 +1,6 @@
 # PrivSignal Scoring
 
-PrivSignal assigns one of four privacy scores to a code change: `NONE`, `LOW`, `MEDIUM`, or `HIGH`.
-
-The goal is simple: highlight changes that may affect how personal data is handled, exposed, stored, or transferred so reviewers know when a closer privacy review is needed.
-
-This document explains the scoring model in plain language. It is intentionally product-level guidance, not an explanation of internal implementation details.
-
-At a high level, PrivSignal monitors a known collection of privacy-relevant data attributes and checks where those attributes are newly used, exposed, stored, transferred, or otherwise changed within a pull request.
+At a high level, PrivSignal monitors a known collection of privacy-relevant data attributes and checks where those attributes are newly used, exposed, stored, transferred, or otherwise changed within a pull request. The goal is simple: highlight changes that may affect how personal data is handled, exposed, stored, or transferred so reviewers know when a closer privacy review is needed.
 
 For each pull request, PrivSignal identifies a collection of privacy findings. Each finding is evaluated individually and assigned a risk level of `LOW`, `MEDIUM`, or `HIGH`.
 
