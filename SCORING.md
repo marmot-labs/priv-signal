@@ -6,6 +6,17 @@ The goal is simple: highlight changes that may affect how personal data is handl
 
 This document explains the scoring model in plain language. It is intentionally product-level guidance, not an explanation of internal implementation details.
 
+At a high level, PrivSignal monitors a known collection of privacy-relevant data attributes and checks where those attributes are newly used, exposed, stored, transferred, or otherwise changed within a pull request.
+
+For each pull request, PrivSignal identifies a collection of privacy findings. Each finding is evaluated individually and assigned a risk level of `LOW`, `MEDIUM`, or `HIGH`.
+
+The overall pull request score is then calculated as follows:
+
+- If there are no findings, the overall PR score is `NONE`
+- If there are findings, the overall PR score is the highest-risk finding in the set
+
+In other words, PrivSignal produces one PR-level privacy score by taking the maximum risk across all findings in the change.
+
 ## Core Terms
 
 ### Source
