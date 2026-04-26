@@ -1,5 +1,7 @@
 defmodule PrivSignal.Diff.Runner do
-  @moduledoc false
+  @moduledoc """
+  Orchestrates artifact loading, contract validation, semantic diffing, and rendering.
+  """
 
   require Logger
 

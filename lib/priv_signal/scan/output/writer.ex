@@ -1,5 +1,7 @@
 defmodule PrivSignal.Scan.Output.Writer do
-  @moduledoc false
+  @moduledoc """
+  Writes scan reports in Markdown and JSON formats.
+  """
   require Logger
 
   def write(markdown, json, opts \\ []) do

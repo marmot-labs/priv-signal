@@ -1,5 +1,7 @@
 defmodule PrivSignal.LLM.Client do
-  @moduledoc false
+  @moduledoc """
+  Calls OpenAI-compatible chat completion endpoints for optional LLM analysis.
+  """
   require Logger
 
   @default_base_url "https://api.openai.com"

@@ -1,5 +1,7 @@
 defmodule PrivSignal.Diff.Hunks do
-  @moduledoc false
+  @moduledoc """
+  Extracts changed line ranges from unified git diffs.
+  """
 
   def ranges_by_file(diff) when is_binary(diff) do
     diff

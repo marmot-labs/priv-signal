@@ -1,5 +1,7 @@
 defmodule PrivSignal.Scan.Output.JSON do
-  @moduledoc false
+  @moduledoc """
+  Renders scan results as deterministic JSON maps.
+  """
 
   def render(result) when is_map(result) do
     %{

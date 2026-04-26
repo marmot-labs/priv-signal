@@ -1,5 +1,7 @@
 defmodule PrivSignal.Validate.Error do
-  @moduledoc false
+  @moduledoc """
+  Struct and formatter for validation errors reported to users.
+  """
 
   defstruct type: nil, flow_id: nil, module: nil, function: nil
 

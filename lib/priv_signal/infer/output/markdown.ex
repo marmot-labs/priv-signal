@@ -1,5 +1,7 @@
 defmodule PrivSignal.Infer.Output.Markdown do
-  @moduledoc false
+  @moduledoc """
+  Renders human-readable summaries for inferred privacy lockfile runs.
+  """
 
   def render(result) when is_map(result) do
     summary = Map.get(result, :summary, %{})

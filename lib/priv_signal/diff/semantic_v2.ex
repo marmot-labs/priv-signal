@@ -1,5 +1,7 @@
 defmodule PrivSignal.Diff.SemanticV2 do
-  @moduledoc false
+  @moduledoc """
+  Converts legacy semantic changes into the v2 event model used by scoring.
+  """
 
   alias PrivSignal.Diff.EventId
 

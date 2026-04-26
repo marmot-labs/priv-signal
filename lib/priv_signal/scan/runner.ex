@@ -1,5 +1,7 @@
 defmodule PrivSignal.Scan.Runner do
-  @moduledoc false
+  @moduledoc """
+  Orchestrates source discovery, AST parsing, scanner execution, and classification.
+  """
 
   alias PrivSignal.Scan.{Classifier, Inventory, Source}
   alias PrivSignal.Scan.Scanner

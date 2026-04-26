@@ -1,5 +1,7 @@
 defmodule PrivSignal.Infer.ModuleClassifier do
-  @moduledoc false
+  @moduledoc """
+  Classifies modules and file paths into privacy-relevant runtime roles.
+  """
 
   alias PrivSignal.Infer.ModuleClassification
 

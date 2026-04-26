@@ -1,5 +1,7 @@
 defmodule PrivSignal.Scan.Evidence do
-  @moduledoc false
+  @moduledoc """
+  Struct representing symbol-level evidence that links code to PRD nodes.
+  """
 
   defstruct type: nil,
             expression: nil,

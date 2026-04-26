@@ -1,5 +1,7 @@
 defmodule PrivSignal.Infer.EvidenceSignal do
-  @moduledoc false
+  @moduledoc """
+  Struct describing a single scanner evidence signal used during inference.
+  """
 
   defstruct rule: nil,
             signal: nil,

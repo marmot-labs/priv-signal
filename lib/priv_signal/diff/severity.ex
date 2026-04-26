@@ -1,5 +1,7 @@
 defmodule PrivSignal.Diff.Severity do
-  @moduledoc false
+  @moduledoc """
+  Annotates semantic diff changes with deterministic severity and rule IDs.
+  """
 
   @default_rule_id "R-LOW-DEFAULT"
 

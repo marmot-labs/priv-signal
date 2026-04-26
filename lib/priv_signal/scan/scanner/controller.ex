@@ -1,5 +1,7 @@
 defmodule PrivSignal.Scan.Scanner.Controller do
-  @moduledoc false
+  @moduledoc """
+  Detects privacy-relevant data exposed through controller response paths.
+  """
 
   @behaviour PrivSignal.Scan.Scanner
 

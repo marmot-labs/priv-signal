@@ -1,5 +1,7 @@
 defmodule PrivSignal.Output.JSON do
-  @moduledoc false
+  @moduledoc """
+  Renders legacy risk assessment results as JSON maps.
+  """
 
   def render(%{category: category, reasons: reasons, events: events}) do
     %{

@@ -1,5 +1,7 @@
 defmodule PrivSignal.Diff.Render.Human do
-  @moduledoc false
+  @moduledoc """
+  Renders semantic diff reports for command-line review.
+  """
 
   def render(report) when is_map(report) do
     changes = Map.get(report, :changes, [])

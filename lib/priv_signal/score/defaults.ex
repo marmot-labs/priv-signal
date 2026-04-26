@@ -1,5 +1,7 @@
 defmodule PrivSignal.Score.Defaults do
-  @moduledoc false
+  @moduledoc """
+  Provides default deterministic scoring configuration values.
+  """
 
   @weights %{
     "R-HIGH-EXTERNAL-FLOW-ADDED" => 6,

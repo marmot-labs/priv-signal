@@ -1,5 +1,7 @@
 defmodule PrivSignal.Score.Output.Writer do
-  @moduledoc false
+  @moduledoc """
+  Writes deterministic score output to the configured JSON artifact path.
+  """
 
   def write(json, opts \\ []) when is_map(json) do
     output_path = Keyword.get(opts, :output, "priv_signal_score.json")

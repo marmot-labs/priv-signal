@@ -1,5 +1,7 @@
 defmodule PrivSignal.Scan.Classifier do
-  @moduledoc false
+  @moduledoc """
+  Converts raw scanner candidates into sorted, severity-labeled findings.
+  """
 
   alias PrivSignal.Scan.Finding
 

@@ -1,5 +1,7 @@
 defmodule PrivSignal.Scan.Scanner.Logging do
-  @moduledoc false
+  @moduledoc """
+  Detects privacy-relevant data written to Logger or configured logging wrappers.
+  """
 
   @behaviour PrivSignal.Scan.Scanner
 

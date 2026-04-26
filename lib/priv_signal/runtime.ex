@@ -1,5 +1,7 @@
 defmodule PrivSignal.Runtime do
-  @moduledoc false
+  @moduledoc """
+  Starts runtime applications required by PrivSignal Mix tasks and pipelines.
+  """
 
   def ensure_started do
     _ = Application.ensure_all_started(:telemetry)

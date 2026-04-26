@@ -1,5 +1,7 @@
 defmodule PrivSignal.Diff.Semantic do
-  @moduledoc false
+  @moduledoc """
+  Compares normalized lockfile artifacts and produces semantic privacy changes.
+  """
 
   alias PrivSignal.Diff.Normalize
 

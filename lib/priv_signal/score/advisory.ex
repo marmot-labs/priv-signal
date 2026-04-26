@@ -1,5 +1,7 @@
 defmodule PrivSignal.Score.Advisory do
-  @moduledoc false
+  @moduledoc """
+  Produces optional advisory LLM interpretation without changing deterministic scores.
+  """
 
   require Logger
 

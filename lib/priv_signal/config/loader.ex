@@ -1,5 +1,7 @@
 defmodule PrivSignal.Config.Loader do
-  @moduledoc false
+  @moduledoc """
+  Loads, parses, and validates `priv_signal.yml` into runtime config structs.
+  """
 
   alias PrivSignal.Config.Schema
 

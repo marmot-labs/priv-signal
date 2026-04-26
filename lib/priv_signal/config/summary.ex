@@ -1,5 +1,7 @@
 defmodule PrivSignal.Config.Summary do
-  @moduledoc false
+  @moduledoc """
+  Builds compact configuration summaries for analysis and advisory prompts.
+  """
 
   alias PrivSignal.Config
   alias PrivSignal.Config.PRD

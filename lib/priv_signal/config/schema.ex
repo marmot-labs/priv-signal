@@ -1,5 +1,7 @@
 defmodule PrivSignal.Config.Schema do
-  @moduledoc false
+  @moduledoc """
+  Validates the `priv_signal.yml` schema before it is converted to structs.
+  """
 
   alias PrivSignal.Config
   alias PrivSignal.Config.PRD

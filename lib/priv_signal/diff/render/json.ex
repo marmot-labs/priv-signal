@@ -1,5 +1,7 @@
 defmodule PrivSignal.Diff.Render.JSON do
-  @moduledoc false
+  @moduledoc """
+  Renders semantic diff reports as versioned JSON artifacts.
+  """
 
   alias PrivSignal.Diff.SemanticV2
 

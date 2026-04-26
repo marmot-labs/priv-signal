@@ -1,5 +1,7 @@
 defmodule PrivSignal.Scan.Output.Markdown do
-  @moduledoc false
+  @moduledoc """
+  Renders human-readable scan findings and summaries.
+  """
 
   def render(result) when is_map(result) do
     summary = result.summary || %{}

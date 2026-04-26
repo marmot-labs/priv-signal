@@ -1,5 +1,7 @@
 defmodule PrivSignal.Infer.FlowIdentity do
-  @moduledoc false
+  @moduledoc """
+  Generates stable identity tuples and IDs for inferred privacy flows.
+  """
 
   @stable_prefix "psfs_"
   @variant_prefix "psf_"

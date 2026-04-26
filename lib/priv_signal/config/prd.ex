@@ -1,5 +1,7 @@
 defmodule PrivSignal.Config.PRD do
-  @moduledoc false
+  @moduledoc """
+  Provides helpers for working with configured privacy-relevant data nodes.
+  """
 
   alias PrivSignal.Config
   alias PrivSignal.Config.PRDNode

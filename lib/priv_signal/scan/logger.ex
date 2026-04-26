@@ -1,5 +1,7 @@
 defmodule PrivSignal.Scan.Logger do
-  @moduledoc false
+  @moduledoc """
+  Compatibility wrapper for running the logging scanner directly.
+  """
 
   alias PrivSignal.Scan.Inventory
   alias PrivSignal.Scan.Scanner.Logging

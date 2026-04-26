@@ -1,5 +1,7 @@
 defmodule PrivSignal.Infer.Output.Writer do
-  @moduledoc false
+  @moduledoc """
+  Writes inferred lockfile JSON and companion Markdown scan output.
+  """
 
   require Logger
 

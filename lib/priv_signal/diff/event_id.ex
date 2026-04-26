@@ -1,5 +1,7 @@
 defmodule PrivSignal.Diff.EventId do
-  @moduledoc false
+  @moduledoc """
+  Generates stable identifiers for semantic diff events.
+  """
 
   def generate(event) when is_map(event) do
     event_type = fetch(event, :event_type, "unknown")

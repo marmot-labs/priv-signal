@@ -21,12 +21,16 @@ defmodule PrivSignal.Config do
   }
 
   defmodule PRDScope do
-    @moduledoc false
+    @moduledoc """
+    Scope metadata tying a PRD node to a module field in the codebase.
+    """
     defstruct module: nil, field: nil
   end
 
   defmodule PRDNode do
-    @moduledoc false
+    @moduledoc """
+    Catalog entry for a privacy-relevant data attribute.
+    """
     defstruct key: nil,
               label: nil,
               class: nil,
@@ -35,10 +39,14 @@ defmodule PrivSignal.Config do
   end
 
   defmodule Scanners do
-    @moduledoc false
+    @moduledoc """
+    Scanner category configuration parsed from `priv_signal.yml`.
+    """
 
     defmodule HTTP do
-      @moduledoc false
+      @moduledoc """
+      Configuration for outbound HTTP privacy scanning.
+      """
       defstruct enabled: true,
                 additional_modules: [],
                 internal_domains: [],
@@ -46,27 +54,37 @@ defmodule PrivSignal.Config do
     end
 
     defmodule Logging do
-      @moduledoc false
+      @moduledoc """
+      Configuration for logging sink privacy scanning.
+      """
       defstruct enabled: true, additional_modules: []
     end
 
     defmodule Controller do
-      @moduledoc false
+      @moduledoc """
+      Configuration for controller response privacy scanning.
+      """
       defstruct enabled: true, additional_render_functions: []
     end
 
     defmodule Telemetry do
-      @moduledoc false
+      @moduledoc """
+      Configuration for telemetry and analytics privacy scanning.
+      """
       defstruct enabled: true, additional_modules: []
     end
 
     defmodule Database do
-      @moduledoc false
+      @moduledoc """
+      Configuration for database read/write privacy scanning.
+      """
       defstruct enabled: true, repo_modules: [], wrapper_modules: [], wrapper_functions: []
     end
 
     defmodule LiveView do
-      @moduledoc false
+      @moduledoc """
+      Configuration for LiveView exposure privacy scanning.
+      """
       defstruct enabled: true, additional_modules: []
     end
 
@@ -79,7 +97,9 @@ defmodule PrivSignal.Config do
   end
 
   defmodule Matching do
-    @moduledoc false
+    @moduledoc """
+    Token-matching options used to connect code symbols to PRD nodes.
+    """
     defstruct aliases: %{},
               split_case: true,
               singularize: true,
@@ -87,20 +107,28 @@ defmodule PrivSignal.Config do
   end
 
   defmodule Scoring do
-    @moduledoc false
+    @moduledoc """
+    Deterministic scoring and optional advisory interpretation configuration.
+    """
 
     defmodule Weights do
-      @moduledoc false
+      @moduledoc """
+      Rule weight overrides for legacy scoring configuration.
+      """
       defstruct values: %{}
     end
 
     defmodule Thresholds do
-      @moduledoc false
+      @moduledoc """
+      Numeric score thresholds retained for legacy scoring configuration.
+      """
       defstruct low_max: 3, medium_max: 8, high_min: 9
     end
 
     defmodule LLMInterpretation do
-      @moduledoc false
+      @moduledoc """
+      Options for optional advisory LLM interpretation of score results.
+      """
       defstruct enabled: false, model: "gpt-5", timeout_ms: 8_000, retries: 1
     end
 

@@ -1,5 +1,7 @@
 defmodule PrivSignal.Scan.Scanner.Utils do
-  @moduledoc false
+  @moduledoc """
+  Shared AST traversal and normalization helpers for scan category modules.
+  """
 
   alias PrivSignal.Validate.AST
 

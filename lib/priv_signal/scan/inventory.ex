@@ -1,5 +1,7 @@
 defmodule PrivSignal.Scan.Inventory do
-  @moduledoc false
+  @moduledoc """
+  Builds the searchable PRD-node inventory used by scan rules.
+  """
 
   alias PrivSignal.Config
   alias PrivSignal.Config.PRD
@@ -243,7 +245,8 @@ defmodule PrivSignal.Scan.Inventory do
             MapSet.member?(inventory.alias_canonical_tokens, part)
         end)
 
-      ([base] ++ conservative_suffix_candidates(parts) ++ prefix_candidates ++ single_part_candidates)
+      ([base] ++
+         conservative_suffix_candidates(parts) ++ prefix_candidates ++ single_part_candidates)
       |> Enum.map(&normalize_token/1)
       |> Enum.reject(&is_nil/1)
       |> Enum.uniq()

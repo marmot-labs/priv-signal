@@ -1,5 +1,7 @@
 defmodule PrivSignal.Analysis.Normalizer do
-  @moduledoc false
+  @moduledoc """
+  Normalizes legacy LLM analysis payloads into predictable internal shapes.
+  """
 
   @default_min_confidence 0.5
 

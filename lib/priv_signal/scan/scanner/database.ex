@@ -1,5 +1,7 @@
 defmodule PrivSignal.Scan.Scanner.Database do
-  @moduledoc false
+  @moduledoc """
+  Detects privacy-relevant data read from or written to database calls.
+  """
 
   @behaviour PrivSignal.Scan.Scanner
 

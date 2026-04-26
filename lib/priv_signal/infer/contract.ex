@@ -1,5 +1,7 @@
 defmodule PrivSignal.Infer.Contract do
-  @moduledoc false
+  @moduledoc """
+  Defines and validates the generated privacy lockfile artifact contract.
+  """
 
   alias PrivSignal.Infer.NodeNormalizer
 

@@ -1,5 +1,7 @@
 defmodule PrivSignal.Scan.Source do
-  @moduledoc false
+  @moduledoc """
+  Discovers Elixir source files that should be scanned.
+  """
 
   def files(opts \\ []) do
     root = Keyword.get(opts, :root, project_root())

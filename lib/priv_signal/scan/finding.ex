@@ -1,5 +1,7 @@
 defmodule PrivSignal.Scan.Finding do
-  @moduledoc false
+  @moduledoc """
+  Struct representing a classified privacy-relevant scan finding.
+  """
 
   defstruct id: nil,
             classification: nil,

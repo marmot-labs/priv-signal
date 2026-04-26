@@ -1,5 +1,7 @@
 defmodule PrivSignal.Infer.FlowScorer do
-  @moduledoc false
+  @moduledoc """
+  Scores evidence signals to estimate confidence for inferred privacy flows.
+  """
 
   @default_weights %{
     same_function_context: 0.5,

@@ -1,5 +1,7 @@
 defmodule PrivSignal.Validate.Result do
-  @moduledoc false
+  @moduledoc """
+  Struct representing validation status and errors for a config section.
+  """
 
   defstruct flow_id: nil, status: :ok, errors: []
 

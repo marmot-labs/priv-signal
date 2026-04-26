@@ -1,5 +1,7 @@
 defmodule PrivSignal.LLM.Schema do
-  @moduledoc false
+  @moduledoc """
+  Validates the expected JSON shape for legacy LLM analysis responses.
+  """
 
   @required_keys ["touched_flows", "new_pii", "new_sinks", "notes"]
 

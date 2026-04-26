@@ -1,5 +1,7 @@
 defmodule PrivSignal.Infer.Flow do
-  @moduledoc false
+  @moduledoc """
+  Struct representing a privacy-relevant flow captured in the lockfile.
+  """
 
   defstruct id: nil,
             stable_id: nil,

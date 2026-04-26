@@ -1,5 +1,7 @@
 defmodule PrivSignal.Score.RubricV2 do
-  @moduledoc false
+  @moduledoc """
+  Classifies v2 semantic diff events using the current categorical scoring rubric.
+  """
 
   @known_event_types MapSet.new([
                        "node_added",

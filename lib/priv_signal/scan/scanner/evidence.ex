@@ -1,5 +1,7 @@
 defmodule PrivSignal.Scan.Scanner.Evidence do
-  @moduledoc false
+  @moduledoc """
+  Extracts PRD-node evidence from AST expressions examined by scanners.
+  """
 
   alias PrivSignal.Scan.Evidence
   alias PrivSignal.Scan.Inventory

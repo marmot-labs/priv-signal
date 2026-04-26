@@ -1,5 +1,7 @@
 defmodule PrivSignal.Output.Writer do
-  @moduledoc false
+  @moduledoc """
+  Writes legacy Markdown and JSON risk assessment outputs.
+  """
 
   def write(markdown, json, opts \\ []) do
     output_path = Keyword.get(opts, :json_path, "priv-signal.json")

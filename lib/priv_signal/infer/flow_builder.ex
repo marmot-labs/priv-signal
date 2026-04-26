@@ -1,5 +1,7 @@
 defmodule PrivSignal.Infer.FlowBuilder do
-  @moduledoc false
+  @moduledoc """
+  Groups inferred privacy nodes into stable flow records for lockfile output.
+  """
 
   alias PrivSignal.Infer.{Contract, Flow, FlowIdentity, FlowScorer}
 

@@ -1,5 +1,7 @@
 defmodule PrivSignal.Analysis.Validator do
-  @moduledoc false
+  @moduledoc """
+  Validates legacy LLM analysis payloads and their cited diff evidence.
+  """
 
   alias PrivSignal.Diff.Hunks
   alias PrivSignal.LLM.Schema

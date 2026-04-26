@@ -1,5 +1,7 @@
 defmodule PrivSignal.Validate do
-  @moduledoc false
+  @moduledoc """
+  Validates configured PRD node scopes against modules and fields found in source.
+  """
 
   alias PrivSignal.Validate.{Error, Index, Result}
   require Logger

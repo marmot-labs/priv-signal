@@ -1,10 +1,96 @@
 # PrivSignal
 
-PrivSignal is an Elixir CLI for detecting privacy drift in application code during CI. It lets engineering teams define a versioned catalog of privacy-relevant data in `priv_signal.yml`, generate a deterministic lockfile from the codebase, and then score pull requests by comparing the PR's generated lockfile against the baseline on the target branch.
+PrivSignal is a tool that detects privacy drift in Elixir codebases during CI/CD workflows. It scans an Elixir codebase against a versioned privacy catalog, writes a deterministic lockfile, compares pull request lockfiles against the base branch, and emits an explainable risk label: `NONE`, `LOW`, `MEDIUM`, or `HIGH`.
 
-The primary use case is PR review: PrivSignal helps surface when a change introduces new handling of personal data, expands exposure to logs or telemetry, changes boundaries such as HTTP or controller responses, or otherwise invalidates the privacy assumptions your team has already documented. It is not a compliance engine and it does not replace legal or privacy review. It provides an explainable signal that tells reviewers when a change is worth a closer look.
+The primary use case is PR review. PrivSignal helps surface when a change introduces new handling of personal data, expands exposure to logs or telemetry, changes boundaries such as HTTP or controller responses, or otherwise invalidates privacy assumptions your team has already documented.
+
+PrivSignal is advisory. It is not a compliance engine, does not replace legal or privacy review, and does not decide whether a change is legally acceptable. It provides an explainable signal that tells reviewers when a change deserves a closer look.
+
+## Why PrivSignal
+
+Privacy Impact Assessments often drift away from the code they describe. Normal development can gradually introduce new personal data handling, new sinks, new external transfers, or new exposure paths before anyone realizes the privacy baseline has changed.
+
+PrivSignal brings that reassessment signal into the development workflow. It uses explicit, human-authored configuration and deterministic artifacts so privacy-relevant changes can be reviewed at pull request time.
+
+## What It Does
+
+PrivSignal supports three related workflows:
+
+- Build a project-specific catalog of privacy-relevant data attributes in `priv_signal.yml`.
+- Run `mix priv_signal.scan` to generate `priv_signal.lockfile.json`, a deterministic baseline artifact that captures usage of privacy-relevant data attributes across a codebase.
+- Run `diff` and `score` in pull request workflows to compare the PR branch against the base branch and produce an explainable privacy risk score.
 
 The same scanning primitives are also useful outside PR scoring. You can run `mix priv_signal.scan` as a repository audit to find privacy-relevant touchpoints such as logging, telemetry, controller responses, outbound HTTP calls, database access, and LiveView exposure patterns.
+
+## Requirements
+
+- Elixir `~> 1.18`
+- Erlang/OTP compatible with your Elixir version
+- Git, when comparing lockfiles across refs
+
+## Installation
+
+PrivSignal can be used from source as a Mix dependency:
+
+```elixir
+def deps do
+  [
+    {:priv_signal, git: "https://github.com/marmot-labs/priv-signal.git"}
+  ]
+end
+```
+
+Then fetch and compile dependencies:
+
+```bash
+mix deps.get
+mix compile
+```
+
+## Quick Start
+
+### 1. Create and validate a catalog
+
+Generate a starter config:
+
+```bash
+mix priv_signal.init
+```
+
+Validate the catalog:
+
+```bash
+mix priv_signal.validate
+```
+
+### 2. Generate the baseline lockfile
+
+Run the scanner on the default branch and commit the generated baseline:
+
+```bash
+mix priv_signal.scan
+git add priv_signal.yml priv_signal.lockfile.json
+git commit -m "add PrivSignal baseline"
+```
+
+### 3. Score a pull request locally
+
+```bash
+mix priv_signal.scan --json-path tmp/pr.lockfile.json
+mix priv_signal.diff \
+  --base origin/main \
+  --candidate-path tmp/pr.lockfile.json \
+  --artifact-path priv_signal.lockfile.json \
+  --format json \
+  --output tmp/privacy_diff.json
+mix priv_signal.score --diff tmp/privacy_diff.json --output tmp/priv_signal_score.json
+```
+
+If you want `scan` to fail on parse or scan errors, use strict mode:
+
+```bash
+mix priv_signal.scan --strict --json-path tmp/pr.lockfile.json
+```
 
 ## How It Works
 
@@ -30,50 +116,9 @@ Typical workflow:
 6. Run `mix priv_signal.diff --base <target-branch-ref>` to compute the semantic privacy diff between the committed base artifact and the PR artifact.
 7. Run `mix priv_signal.score --diff ...` to turn that diff into a deterministic privacy risk score and summary.
 
-## Quick Start
-
-Generate a starter config:
-
-```bash
-mix priv_signal.init
-```
-
-Validate the catalog:
-
-```bash
-mix priv_signal.validate
-```
-
-Generate the baseline lockfile:
-
-```bash
-mix priv_signal.scan
-git add priv_signal.yml priv_signal.lockfile.json
-git commit -m "add PrivSignal baseline"
-```
-
-Score a pull request locally:
-
-```bash
-mix priv_signal.scan --json-path tmp/pr.lockfile.json
-mix priv_signal.diff \
-  --base origin/main \
-  --candidate-path tmp/pr.lockfile.json \
-  --artifact-path priv_signal.lockfile.json \
-  --format json \
-  --output tmp/privacy_diff.json
-mix priv_signal.score --diff tmp/privacy_diff.json --output tmp/priv_signal_score.json
-```
-
-If you want `scan` to fail on parse or scan errors, use strict mode:
-
-```bash
-mix priv_signal.scan --strict --json-path tmp/pr.lockfile.json
-```
-
 ## Configuration
 
-PrivSignal uses a repository-root `priv_signal.yml` file as the source of truth for the privacy catalog. At minimum, you define `prd_nodes` that map privacy-relevant fields to the Elixir modules where they live.
+PrivSignal uses a repository-root `priv_signal.yml` file as the source of truth for the privacy catalog. At minimum, define `prd_nodes` that map privacy-relevant fields to the Elixir modules where they live.
 
 Example:
 
@@ -168,7 +213,24 @@ PrivSignal currently scans for privacy-relevant usage across these categories:
 
 This is why `scan` is useful both as the first step in the PR scoring workflow and as a standalone audit tool.
 
-## CI Example
+## Understanding Results
+
+PrivSignal reports privacy-relevant changes through stable detection and scoring categories:
+
+- `PS-SCAN-*`: scanner-level detection classes from `mix priv_signal.scan`.
+- `PS-DIFF-*`: semantic privacy diff classes from `mix priv_signal.diff`.
+- `PS-SCORE-*`: score rubric classes from `mix priv_signal.score`.
+
+The final PR score is selected from the highest-risk detected event:
+
+- `NONE` when there are no privacy-relevant events.
+- `HIGH` when any high-class event exists.
+- `MEDIUM` when there are no high-class events but at least one medium-class event exists.
+- `LOW` when privacy-relevant events exist but do not meet the medium or high criteria.
+
+See [SCORING.md](SCORING.md) for scoring definitions and examples. See [docs/classification_registry.md](docs/classification_registry.md) for the stable scan, diff, and score registry.
+
+## CI Usage
 
 ```yaml
 name: PrivSignal
@@ -200,20 +262,54 @@ This assumes `priv_signal.lockfile.json` is already committed on the base branch
 
 ## Inventory Bootstrap Skill
 
-This repository includes an installable AI coding skill at [`skills/priv-signal-inventory/SKILL.md`](skills/priv-signal-inventory/SKILL.md) that helps bootstrap `priv_signal.yml` for Elixir codebases. It is designed for Codex- and Claude Code-style agent workflows and can inspect local schemas, infer likely PRD nodes, and produce a high-confidence first pass of the catalog.
+This repository includes an installable AI coding skill at [skills/priv-signal-inventory/SKILL.md](skills/priv-signal-inventory/SKILL.md) that helps bootstrap `priv_signal.yml` for Elixir codebases. It is designed for Codex- and Claude Code-style agent workflows and can inspect local schemas, infer likely PRD nodes, and produce a high-confidence first pass of the catalog.
 
 Use it when the hardest part of adoption is building the initial privacy catalog. It can significantly reduce the manual effort required to identify candidate modules, fields, aliases, and database wrapper boundaries before you validate and refine the file yourself.
 
-## Installation
+## Documentation
 
-PrivSignal is an Elixir project targeting Elixir `~> 1.18`.
+- [SCORING.md](SCORING.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Classification registry](docs/classification_registry.md)
+- [Core PRD](docs/features/core/prd.md)
+- [Semantic diff PRD](docs/features/semantic_diff/prd.md)
+- [Scoring PRD](docs/features/scoring/prd.md)
+- [Release notes](docs/release_notes.md)
 
-If you want to add it as a dependency from source:
+## Development
 
-```elixir
-def deps do
-  [
-    {:priv_signal, git: "https://github.com/marmot-labs/priv-signal.git"}
-  ]
-end
+Run the standard project checks:
+
+```bash
+mix deps.get
+mix compile
+mix test
+mix format
 ```
+
+Tests use ExUnit and live under `test/`.
+
+## Contributing
+
+Issues and pull requests should include:
+
+- A short description of the privacy or CLI behavior being changed.
+- Tests, or a note explaining why tests are not applicable.
+- Any changes needed to `priv_signal.yml`, generated lockfile behavior, or CI usage.
+
+Keep changes focused and avoid committing secrets or sensitive generated configuration.
+
+## Security and Privacy Notes
+
+- Set model credentials with environment variables such as `PRIV_SIGNAL_MODEL_API_KEY`.
+- Do not commit secrets, real personal data, or generated config containing sensitive values.
+- Treat `priv_signal.yml` and `priv_signal.lockfile.json` as reviewable privacy metadata.
+- PrivSignal output is advisory and should be reviewed alongside the code change.
+
+## Getting Help
+
+Open a GitHub issue with the command you ran, the relevant `priv_signal.yml` excerpt, and the error or generated output. Do not include secrets or sensitive personal data.
+
+## License
+
+This project is licensed under the terms of the [MIT License](LICENSE).

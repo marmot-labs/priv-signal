@@ -1,5 +1,7 @@
 defmodule PrivSignal.Risk.Rules do
-  @moduledoc false
+  @moduledoc """
+  Applies deterministic legacy risk-category rules to normalized privacy events.
+  """
 
   @sensitive_categories ["ssn", "passport", "biometric", "health", "financial", "credit_card"]
 

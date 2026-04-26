@@ -1,5 +1,7 @@
 defmodule PrivSignal.Infer.NodeNormalizer do
-  @moduledoc false
+  @moduledoc """
+  Canonicalizes inferred nodes so lockfile output is deterministic.
+  """
 
   alias PrivSignal.Infer.{EvidenceSignal, Node}
 

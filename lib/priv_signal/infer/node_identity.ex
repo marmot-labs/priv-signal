@@ -1,5 +1,7 @@
 defmodule PrivSignal.Infer.NodeIdentity do
-  @moduledoc false
+  @moduledoc """
+  Builds stable IDs for inferred privacy nodes from normalized node attributes.
+  """
 
   alias PrivSignal.Infer.NodeNormalizer
 

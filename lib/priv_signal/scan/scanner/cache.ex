@@ -1,5 +1,7 @@
 defmodule PrivSignal.Scan.Scanner.Cache do
-  @moduledoc false
+  @moduledoc """
+  Precomputes per-file AST metadata shared by multiple scanner categories.
+  """
 
   alias PrivSignal.Scan.Scanner.Utils
 

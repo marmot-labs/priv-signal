@@ -1,5 +1,7 @@
 defmodule PrivSignal.Risk.Assessor do
-  @moduledoc false
+  @moduledoc """
+  Builds a risk assessment summary from normalized legacy analysis events.
+  """
 
   alias PrivSignal.Risk.Rules
 

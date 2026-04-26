@@ -1,5 +1,7 @@
 defmodule PrivSignal.Diff.ArtifactLoader do
-  @moduledoc false
+  @moduledoc """
+  Loads base and candidate privacy lockfile artifacts from git refs or files.
+  """
 
   alias PrivSignal.Diff.Contract
 

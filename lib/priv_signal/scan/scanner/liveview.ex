@@ -1,5 +1,7 @@
 defmodule PrivSignal.Scan.Scanner.LiveView do
-  @moduledoc false
+  @moduledoc """
+  Detects privacy-relevant data exposed through LiveView assigns and events.
+  """
 
   @behaviour PrivSignal.Scan.Scanner
 

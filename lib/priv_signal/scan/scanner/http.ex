@@ -1,5 +1,7 @@
 defmodule PrivSignal.Scan.Scanner.HTTP do
-  @moduledoc false
+  @moduledoc """
+  Detects privacy-relevant data passed to outbound HTTP calls.
+  """
 
   @behaviour PrivSignal.Scan.Scanner
 

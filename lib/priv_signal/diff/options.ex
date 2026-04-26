@@ -1,5 +1,7 @@
 defmodule PrivSignal.Diff.Options do
-  @moduledoc false
+  @moduledoc """
+  Parses and validates command-line options for `mix priv_signal.diff`.
+  """
 
   @default_artifact_path "priv_signal.lockfile.json"
   @default_format :human

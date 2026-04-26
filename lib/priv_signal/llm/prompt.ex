@@ -1,5 +1,7 @@
 defmodule PrivSignal.LLM.Prompt do
-  @moduledoc false
+  @moduledoc """
+  Builds prompts for legacy LLM-based privacy diff analysis.
+  """
 
   def build(diff, config_summary) when is_binary(diff) and is_map(config_summary) do
     system =

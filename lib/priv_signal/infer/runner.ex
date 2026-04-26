@@ -1,5 +1,7 @@
 defmodule PrivSignal.Infer.Runner do
-  @moduledoc false
+  @moduledoc """
+  Orchestrates scanner execution and flow inference for lockfile generation.
+  """
 
   alias PrivSignal.Infer.{Contract, FlowBuilder}
   alias PrivSignal.Infer.ScannerAdapter.Logging, as: LoggingAdapter

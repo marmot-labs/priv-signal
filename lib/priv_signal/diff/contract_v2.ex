@@ -1,5 +1,7 @@
 defmodule PrivSignal.Diff.ContractV2 do
-  @moduledoc false
+  @moduledoc """
+  Validates v2 semantic diff events before deterministic scoring.
+  """
 
   @known_event_types MapSet.new([
                        "node_added",

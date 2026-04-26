@@ -7,6 +7,11 @@ defmodule Mix.Tasks.PrivSignal.Score do
 
   @shortdoc "Compute deterministic privacy risk score from semantic diff JSON"
 
+  @moduledoc """
+  Mix task for turning a semantic privacy diff artifact into a deterministic
+  PR-level privacy risk score.
+  """
+
   @switches [help: :boolean, diff: :string, output: :string, quiet: :boolean]
 
   @impl true

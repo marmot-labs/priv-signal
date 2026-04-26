@@ -1,5 +1,7 @@
 defmodule PrivSignal.Score.Output.JSON do
-  @moduledoc false
+  @moduledoc """
+  Renders deterministic score reports as versioned JSON maps.
+  """
 
   @schema_version "v2"
 

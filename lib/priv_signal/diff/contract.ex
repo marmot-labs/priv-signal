@@ -1,5 +1,7 @@
 defmodule PrivSignal.Diff.Contract do
-  @moduledoc false
+  @moduledoc """
+  Validates legacy lockfile artifacts before semantic diffing.
+  """
 
   @schema_version "1"
   @required_artifact_keys [:schema_version, :data_nodes, :flows]

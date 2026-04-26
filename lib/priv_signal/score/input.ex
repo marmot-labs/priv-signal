@@ -1,5 +1,7 @@
 defmodule PrivSignal.Score.Input do
-  @moduledoc false
+  @moduledoc """
+  Loads and validates semantic diff JSON artifacts for scoring.
+  """
 
   @supported_versions MapSet.new(["v2"])
 

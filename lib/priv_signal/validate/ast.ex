@@ -1,5 +1,7 @@
 defmodule PrivSignal.Validate.AST do
-  @moduledoc false
+  @moduledoc """
+  Parses Elixir AST and extracts module/function metadata for validation and scans.
+  """
 
   def parse_file(path) do
     with {:ok, source} <- read_file(path),

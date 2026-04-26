@@ -1,5 +1,7 @@
 defmodule PrivSignal.Git.Diff do
-  @moduledoc false
+  @moduledoc """
+  Reads unified git diffs for a base/head pair used by legacy analysis paths.
+  """
 
   def get(base, head, opts \\ []) do
     start = System.monotonic_time()

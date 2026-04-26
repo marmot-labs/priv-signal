@@ -1,5 +1,7 @@
 defmodule PrivSignal.Validate.Output do
-  @moduledoc false
+  @moduledoc """
+  Formats validation results and errors for CLI output.
+  """
 
   alias PrivSignal.Validate.{Error, Result}
 

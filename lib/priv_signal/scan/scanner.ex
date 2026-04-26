@@ -1,5 +1,7 @@
 defmodule PrivSignal.Scan.Scanner do
-  @moduledoc false
+  @moduledoc """
+  Provides shared validation for scanner modules used by the scan runner.
+  """
 
   @callback scan_ast(Macro.t(), map(), struct(), keyword()) :: [map()]
 

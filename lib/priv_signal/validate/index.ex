@@ -1,5 +1,7 @@
 defmodule PrivSignal.Validate.Index do
-  @moduledoc false
+  @moduledoc """
+  Builds a source index of modules and fields used by config validation.
+  """
 
   alias PrivSignal.Validate.AST
   require Logger

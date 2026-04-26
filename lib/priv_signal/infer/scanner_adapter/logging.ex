@@ -1,5 +1,7 @@
 defmodule PrivSignal.Infer.ScannerAdapter.Logging do
-  @moduledoc false
+  @moduledoc """
+  Converts scanner findings into inferred nodes used by the lockfile pipeline.
+  """
 
   alias PrivSignal.Infer.{ModuleClassifier, Node, NodeIdentity, NodeNormalizer}
 

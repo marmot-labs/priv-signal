@@ -1,5 +1,7 @@
 defmodule PrivSignal.Output.Markdown do
-  @moduledoc false
+  @moduledoc """
+  Renders legacy risk assessment results as Markdown.
+  """
 
   def render(%{category: category, reasons: reasons, events: events}) do
     lines = ["## PrivSignal Privacy Risk", "", "**Category:** #{format_category(category)}", ""]

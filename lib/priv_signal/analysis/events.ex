@@ -1,5 +1,7 @@
 defmodule PrivSignal.Analysis.Events do
-  @moduledoc false
+  @moduledoc """
+  Converts legacy normalized analysis payloads into risk events.
+  """
 
   def from_payload(payload) when is_map(payload) do
     flows = build_events(payload, "touched_flows", :flow_touched, :flow_id)

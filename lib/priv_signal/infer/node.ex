@@ -1,5 +1,7 @@
 defmodule PrivSignal.Infer.Node do
-  @moduledoc false
+  @moduledoc """
+  Struct representing a normalized privacy-relevant source, sink, or boundary node.
+  """
 
   defstruct id: nil,
             node_type: nil,

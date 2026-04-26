@@ -1,5 +1,7 @@
 defmodule PrivSignal.Git.Options do
-  @moduledoc false
+  @moduledoc """
+  Parses base and head git ref options for diff-based command execution.
+  """
 
   @default_base "origin/main"
   @default_head "HEAD"

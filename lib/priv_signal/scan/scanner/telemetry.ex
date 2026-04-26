@@ -1,5 +1,7 @@
 defmodule PrivSignal.Scan.Scanner.Telemetry do
-  @moduledoc false
+  @moduledoc """
+  Detects privacy-relevant data emitted through telemetry and analytics calls.
+  """
 
   @behaviour PrivSignal.Scan.Scanner
 

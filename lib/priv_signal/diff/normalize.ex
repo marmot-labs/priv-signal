@@ -1,5 +1,7 @@
 defmodule PrivSignal.Diff.Normalize do
-  @moduledoc false
+  @moduledoc """
+  Normalizes lockfile artifacts so semantic comparisons ignore ordering noise.
+  """
 
   alias PrivSignal.Infer.FlowIdentity
   alias PrivSignal.Infer.NodeNormalizer

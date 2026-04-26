@@ -1,5 +1,7 @@
 defmodule PrivSignal.Score.Engine do
-  @moduledoc false
+  @moduledoc """
+  Runs deterministic scoring against v2 semantic diff events.
+  """
 
   require Logger
 

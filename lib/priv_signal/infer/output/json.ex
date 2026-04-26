@@ -1,5 +1,7 @@
 defmodule PrivSignal.Infer.Output.JSON do
-  @moduledoc false
+  @moduledoc """
+  Renders inferred privacy lockfile results as deterministic JSON maps.
+  """
 
   alias PrivSignal.Infer.Contract
 
